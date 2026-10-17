@@ -221,6 +221,12 @@ form { display: flex; flex-direction: column; gap: 14px; }
 .photo-pick { display: flex; gap: 10px; flex-wrap: wrap; }
 .photo-pick .secondary { flex: 1 1 150px; display: inline-flex; align-items: center; justify-content: center; gap: 8px; }
 .photo-pick .secondary svg { width: 20px; height: 20px; flex: none; }
+/* Phone/tablet (touch) gets "take a photo" + "from gallery"; a computer gets one "choose a file" button. */
+.photo-pick .desk-only { display: none; }
+@media (hover: hover) and (pointer: fine) {
+  .photo-pick .touch-only { display: none; }
+  .photo-pick .desk-only { display: inline-flex; }
+}
 .preview { width: 100%; max-height: 220px; object-fit: cover; border-radius: 12px; }
 .actions { display: flex; gap: 10px; flex-wrap: wrap; }
 .actions .primary { flex: 1 1 140px; }

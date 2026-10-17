@@ -283,8 +283,7 @@
         '<div class="trash-text"><strong>' + esc(t.plant.name) + '</strong>' +
         '<p class="meta">Зникне остаточно через ' + left + ' · записів: ' + t.plant.logs.length + '</p>' +
         (pics.length ? '<button type="button" class="link-btn" data-action="gallery" data-id="' + t.plant.id + '" style="padding-left:0">Усі фото (' + pics.length + ')</button>' : '') + '</div>' +
-        '<div class="trash-actions"><button type="button" class="secondary" data-action="restore" data-id="' + t.plant.id + '">Відновити</button>' +
-        '<button type="button" class="link-btn" data-action="purge" data-id="' + t.plant.id + '">' + (ui.confirm === key ? 'Точно видалити?' : 'Видалити назавжди') + '</button></div></li>';
+        '<div class="trash-actions"><button type="button" class="secondary" data-action="restore" data-id="' + t.plant.id + '">Відновити</button></div></li>';
     }).join('');
     return head +
       '<p class="meta" style="margin:6px 0 12px">Видалені рослини зберігаються 2 дні, потім зникають разом із записами та фото.</p>' +
@@ -733,11 +732,15 @@
   });
 
   /* ---------- events ---------- */
+  var pressOnBackdrop = false;
+  document.addEventListener('pointerdown', function (e) { pressOnBackdrop = (e.target === overlay); }, true);
   document.addEventListener('click', function (e) {
     var tab = e.target.closest('[data-tab]');
     if (tab) { ui.tab = tab.getAttribute('data-tab'); ui.confirm = null; render(); return; }
 
-    if (e.target === overlay) { closeSheet(); return; }
+    // Close only when the press AND the release both happened on the dark backdrop.
+    // (Selecting text in a field and letting go outside the window used to close it.)
+    if (e.target === overlay) { if (pressOnBackdrop) closeSheet(); return; }
 
     var el = e.target.closest('[data-action]');
     if (!el) return;
@@ -767,14 +770,6 @@
     else if (act === 'trash-back') { ui.tab = 'plants'; ui.confirm = null; render(); }
     else if (act === 'restore') {
       run(function () { return restorePlant(id); }, 'Рослину відновлено');
-    }
-    else if (act === 'purge') {
-      var pkey = 'trash:' + id;
-      if (ui.confirm !== pkey) { ui.confirm = pkey; render(); }
-      else {
-        ui.confirm = null;
-        run(function () { return purgePlant(id); }, 'Видалено назавжди');
-      }
     }
     else if (act === 'delete-plant') {
       if (ui.confirm !== 'plant') {
