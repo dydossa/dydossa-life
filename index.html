@@ -1,0 +1,120 @@
+<!doctype html>
+<html lang="uk">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>dydossa life</title>
+<meta name="theme-color" content="#3E7B58">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="dydossa life">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<link rel="icon" type="image/png" href="icons/icon-192.png">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=Figtree:wght@400;500;600&display=swap">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<!-- Sign-in screen -->
+<div class="wrap auth" id="auth" hidden>
+  <div class="brand">
+    <svg viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M16 29V15"/><path d="M16 17c-7 0-11-4-11-11 7 0 11 4 11 11z"/><path d="M16 21c0-5 3-9 10-9 0 6-3 9-10 9z"/></svg>
+    <h1>dydossa <span>life</span></h1>
+  </div>
+  <form class="auth-card" id="login-form">
+    <div class="field">
+      <label for="l-email">Пошта</label>
+      <input type="email" id="l-email" autocomplete="username" inputmode="email" autocapitalize="off" required>
+    </div>
+    <div class="field">
+      <label for="l-pass">Пароль</label>
+      <input type="password" id="l-pass" autocomplete="current-password" required>
+    </div>
+    <p class="auth-err" id="login-err" role="alert" hidden></p>
+    <button type="submit" class="primary" id="login-btn">Увійти</button>
+  </form>
+</div>
+
+<!-- The app -->
+<div class="wrap" id="app" hidden>
+  <header class="top">
+    <div class="brand">
+      <svg viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M16 29V15"/><path d="M16 17c-7 0-11-4-11-11 7 0 11 4 11 11z"/><path d="M16 21c0-5 3-9 10-9 0 6-3 9-10 9z"/></svg>
+      <h1>dydossa <span>life</span></h1>
+    </div>
+    <div class="top-actions">
+      <button type="button" class="icon-btn" id="trash-btn" data-action="trash-open" aria-label="Корзина" aria-pressed="false">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/></svg>
+        <span class="count" id="trash-count" hidden></span>
+      </button>
+      <button type="button" class="icon-btn" id="theme-btn" aria-label="Перемкнути світлу і темну тему"></button>
+    </div>
+  </header>
+
+  <p class="summary" id="summary"></p>
+
+  <div class="tabs" role="tablist" aria-label="Розділи">
+    <button type="button" class="tab" role="tab" id="tab-plants" data-tab="plants" aria-selected="true">Рослини</button>
+    <button type="button" class="tab" role="tab" id="tab-diary" data-tab="diary" aria-selected="false">Щоденник</button>
+  </div>
+
+  <main id="view"><div class="loading">Завантаження…</div></main>
+
+  <p class="foot">Дані зберігаються в хмарі, тож однакові на всіх пристроях. <button type="button" class="link-btn" data-action="signout" style="min-height:0;padding:0">Вийти</button></p>
+</div>
+
+<div class="overlay" id="overlay" hidden>
+  <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="sheet-title">
+    <div class="sheet-head">
+      <h2 id="sheet-title"></h2>
+      <button type="button" class="link-btn" data-action="close">Закрити</button>
+    </div>
+
+    <form id="water-form" hidden>
+      <div class="field">
+        <label for="w-date">Дата поливу</label>
+        <input type="date" id="w-date" required>
+      </div>
+      <div class="field">
+        <span class="lbl">Фото</span>
+        <div class="photo-pick">
+          <button type="button" class="secondary" data-action="pick-cam"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg>Зробити фото</button>
+          <button type="button" class="secondary" data-action="pick-lib"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="10" r="1.8"/><path d="M21 16l-5-5-8 9"/></svg>З галереї</button>
+          <input type="file" id="w-cam" accept="image/*" capture="environment" hidden>
+          <input type="file" id="w-lib" accept="image/*" hidden>
+        </div>
+        <img class="preview" id="w-preview" alt="Попередній перегляд фото" hidden>
+        <button type="button" class="link-btn" id="w-clear" data-action="photo-clear" style="align-self:flex-start" hidden>Прибрати фото</button>
+      </div>
+      <div class="actions">
+        <button type="submit" class="primary" id="w-submit">Записати полив</button>
+      </div>
+    </form>
+
+    <form id="plant-form" hidden>
+      <div class="field">
+        <label for="p-name">Назва</label>
+        <input type="text" id="p-name" maxlength="60" required autocomplete="off">
+      </div>
+      <div class="field">
+        <label for="p-interval">Поливати раз на скільки днів</label>
+        <input type="number" id="p-interval" min="1" max="365" inputmode="numeric" required>
+      </div>
+      <div class="actions">
+        <button type="submit" class="primary" id="p-submit">Зберегти</button>
+        <button type="button" class="danger" id="p-delete" data-action="delete-plant" hidden>Видалити рослину</button>
+      </div>
+    </form>
+
+    <div id="gallery" hidden></div>
+  </div>
+</div>
+
+<div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
+
+<script src="vendor/supabase.js"></script>
+<script src="config.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
