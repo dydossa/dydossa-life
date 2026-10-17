@@ -12,7 +12,7 @@
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
 <link rel="icon" type="image/png" href="icons/icon-192.png">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=Figtree:wght@400;500;600&display=swap">
-<link rel="stylesheet" href="styles.css?v=4">
+<link rel="stylesheet" href="styles.css?v=5">
 </head>
 <body>
 
@@ -44,6 +44,9 @@
       <h1>dydossa <span>life</span></h1>
     </div>
     <div class="top-actions">
+      <button type="button" class="icon-btn" id="home-btn" data-action="home" aria-label="На головну" hidden>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 11l8-7 8 7"/><path d="M6 10v10h12V10"/></svg>
+      </button>
       <button type="button" class="icon-btn" id="trash-btn" data-action="trash-open" aria-label="Корзина" aria-pressed="false">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/></svg>
         <span class="count" id="trash-count" hidden></span>
@@ -52,14 +55,23 @@
     </div>
   </header>
 
-  <p class="summary" id="summary"></p>
+  <!-- Home: a list of sections. Only "plants" exists so far. -->
+  <section class="home" id="home">
+    <p class="summary" id="home-date"></p>
+    <ul class="tiles" id="tiles"></ul>
+  </section>
 
-  <div class="tabs" role="tablist" aria-label="Розділи">
-    <button type="button" class="tab" role="tab" id="tab-plants" data-tab="plants" aria-selected="true">Рослини</button>
-    <button type="button" class="tab" role="tab" id="tab-diary" data-tab="diary" aria-selected="false">Щоденник</button>
+  <!-- Plants section -->
+  <div class="section-screen" id="plants-screen" hidden>
+    <p class="summary" id="summary"></p>
+
+    <div class="tabs" role="tablist" aria-label="Розділи">
+      <button type="button" class="tab" role="tab" id="tab-plants" data-tab="plants" aria-selected="true">Рослини</button>
+      <button type="button" class="tab" role="tab" id="tab-diary" data-tab="diary" aria-selected="false">Щоденник</button>
+    </div>
+
+    <main id="view"><div class="loading">Завантаження…</div></main>
   </div>
-
-  <main id="view"><div class="loading">Завантаження…</div></main>
 
   <p class="foot">Дані зберігаються в хмарі, тож однакові на всіх пристроях. <button type="button" class="link-btn" data-action="signout" style="min-height:0;padding:0">Вийти</button></p>
 </div>
@@ -116,6 +128,6 @@
 
 <script src="vendor/supabase.js"></script>
 <script src="config.js"></script>
-<script src="app.js?v=4"></script>
+<script src="app.js?v=5"></script>
 </body>
 </html>

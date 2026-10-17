@@ -262,3 +262,18 @@ form { display: flex; flex-direction: column; gap: 14px; }
 .auth-err { margin: 0; color: var(--warn); font-weight: 500; }
 .loading { color: var(--muted); text-align: center; padding: 40px 0; }
 .primary:disabled { opacity: .6; cursor: default; }
+
+/* Home: neutral list of sections (greys only; the green accent stays inside the plants section) */
+.section-screen { display: flex; flex-direction: column; gap: 22px; }
+.home { display: flex; flex-direction: column; gap: 18px; }
+.tiles { list-style: none; margin: 0; padding: 0; display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); }
+.tile { width: 100%; display: flex; align-items: center; gap: 14px; text-align: left; padding: 16px; min-height: 76px; border-radius: 16px; border: 1px solid var(--line); background: var(--surface); color: var(--ink); box-shadow: var(--shadow); font: inherit; cursor: pointer; }
+.tile:hover:not(:disabled) { background: var(--surface-2); }
+.tile:disabled { cursor: default; box-shadow: none; opacity: .6; }
+.tile-icon { width: 44px; height: 44px; border-radius: 12px; background: var(--surface-2); color: var(--muted); display: grid; place-items: center; flex: none; }
+.tile-icon svg { width: 24px; height: 24px; }
+.tile-text { display: flex; flex-direction: column; gap: 2px; min-width: 0; flex: 1; }
+.tile-text strong { font-family: var(--font-display); font-size: 1.1rem; font-weight: 600; }
+.tile-sub { color: var(--muted); font-size: .9rem; }
+.tile-sub.warn { color: var(--warn); font-weight: 600; }
+.tile-go { width: 20px; height: 20px; color: var(--muted); flex: none; }

@@ -28,7 +28,7 @@
 
   /* ---------- state ---------- */
   var state = { plants: [], trash: [] };
-  var ui = { tab: 'plants', sheet: null, photo: null, photoUrl: null, confirm: null, statIds: null, range: 90, galIdx: null, busy: false };
+  var ui = { screen: 'home', loaded: false, tab: 'plants', sheet: null, photo: null, photoUrl: null, confirm: null, statIds: null, range: 90, galIdx: null, busy: false };
   var session = null;
   var urlCache = {};
   var urlCacheAt = 0;
@@ -153,6 +153,7 @@
   async function refresh() {
     await fetchAll();
     lastRefresh = Date.now();
+    ui.loaded = true;
     render();
   }
 
@@ -486,7 +487,53 @@
     drawChart();
   }
 
+  /* ---------- home: the list of sections ---------- */
+  var plantsScreen = document.getElementById('plants-screen');
+  var homeEl = document.getElementById('home');
+  var homeBtn = document.getElementById('home-btn');
+  var trashBtn = document.getElementById('trash-btn');
+  var ICON_PLANT = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 21v-9"/><path d="M12 13c-5 0-8-3-8-8 5 0 8 3 8 8z"/><path d="M12 16c0-4 2-6 7-6 0 4-2 6-7 6z"/></svg>';
+  var ICON_ANT = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="6" cy="14" r="2.5"/><circle cx="12" cy="13" r="2"/><circle cx="17.5" cy="11" r="2.5"/><path d="M6 12l-2-4M12 11l-1-4M17.5 8.5L16 5M19.5 9l2-2M4 16l-2 3M7 16l1 4M12 15l2 5M17 13.5l3 5"/></svg>';
+  var ICON_PIANO = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M9 19v-6M15 19v-6M8 5v8h2V5M14 5v8h2V5"/></svg>';
+  var SECTIONS = [
+    { id: 'plants', title: 'Рослини', icon: ICON_PLANT, ready: true },
+    { id: 'ants', title: 'Мурахи', icon: ICON_ANT, ready: false },
+    { id: 'piano', title: 'Піаніно', icon: ICON_PIANO, ready: false }
+  ];
+
+  function plantsLine() {
+    if (!ui.loaded) return '';
+    if (!state.plants.length) return 'Ще немає рослин';
+    var due = state.plants.filter(function (p) { return status(p).due; }).length;
+    return due ? 'Потрібен полив: ' + due + ' з ' + state.plants.length : 'Сьогодні поливати нічого';
+  }
+
+  function renderHome() {
+    var d = new Intl.DateTimeFormat('uk-UA', { weekday: 'long', day: 'numeric', month: 'long' }).format(new Date());
+    document.getElementById('home-date').innerHTML = '<strong>' + esc(d) + '</strong>';
+    document.getElementById('tiles').innerHTML = SECTIONS.map(function (s) {
+      var line = s.ready ? (s.id === 'plants' ? plantsLine() : '') : 'Скоро';
+      var warn = s.ready && s.id === 'plants' && ui.loaded && state.plants.some(function (p) { return status(p).due; });
+      return '<li><button type="button" class="tile" ' + (s.ready ? 'data-action="open-section" data-section="' + s.id + '"' : 'disabled') + '>' +
+        '<span class="tile-icon">' + s.icon + '</span>' +
+        '<span class="tile-text"><strong>' + esc(s.title) + '</strong>' +
+        '<span class="tile-sub' + (warn ? ' warn' : '') + '">' + esc(line) + '</span></span>' +
+        (s.ready ? '<svg class="tile-go" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg>' : '') +
+        '</button></li>';
+    }).join('');
+  }
+
+  function applyScreen() {
+    var home = ui.screen === 'home';
+    homeEl.hidden = !home;
+    plantsScreen.hidden = home;
+    homeBtn.hidden = home;
+    trashBtn.hidden = home;
+  }
+
   function render() {
+    applyScreen();
+    if (ui.screen === 'home') { renderHome(); return; }
     renderSummary();
     document.querySelectorAll('.tab').forEach(function (b) {
       b.setAttribute('aria-selected', b.getAttribute('data-tab') === ui.tab ? 'true' : 'false');
@@ -683,6 +730,8 @@
     session = null;
     state = { plants: [], trash: [] };
     ui.tab = 'plants';
+    ui.screen = 'home';
+    ui.loaded = false;
     closeSheet();
     appEl.hidden = true;
     authEl.hidden = false;
@@ -751,7 +800,9 @@
     var act = el.getAttribute('data-action');
     var id = el.getAttribute('data-id');
 
-    if (act === 'water') openSheet('water', id);
+    if (act === 'open-section') { ui.screen = el.getAttribute('data-section'); ui.tab = 'plants'; ui.confirm = null; render(); window.scrollTo(0, 0); }
+    else if (act === 'home') { closeSheet(); ui.screen = 'home'; ui.confirm = null; render(); window.scrollTo(0, 0); }
+    else if (act === 'water') openSheet('water', id);
     else if (act === 'edit') openSheet('edit', id);
     else if (act === 'add') openSheet('add');
     else if (act === 'gallery') openSheet('gallery', id);
