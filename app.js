@@ -526,6 +526,7 @@
   function applyScreen() {
     var home = ui.screen === 'home';
     homeEl.hidden = !home;
+    document.body.classList.toggle('on-home', home);
     plantsScreen.hidden = home;
     homeBtn.hidden = home;
     trashBtn.hidden = home;
