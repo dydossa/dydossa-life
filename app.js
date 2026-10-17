@@ -732,6 +732,10 @@
   });
 
   /* ---------- events ---------- */
+  // One photo button on a computer, two on a touch device. Done here too, so it works even if the stylesheet is cached.
+  var isTouch = !window.matchMedia('(hover: hover) and (pointer: fine)').matches;
+  document.querySelectorAll('.photo-pick .desk-only').forEach(function (b) { b.hidden = isTouch; b.style.display = isTouch ? 'none' : 'inline-flex'; });
+  document.querySelectorAll('.photo-pick .touch-only').forEach(function (b) { b.hidden = !isTouch; b.style.display = isTouch ? 'inline-flex' : 'none'; });
   var pressOnBackdrop = false;
   document.addEventListener('pointerdown', function (e) { pressOnBackdrop = (e.target === overlay); }, true);
   document.addEventListener('click', function (e) {
