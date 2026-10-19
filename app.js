@@ -1574,7 +1574,8 @@
     var open = d.steps.filter(function (s) { return !s.d; }), done = d.steps.filter(function (s) { return s.d; });
     var html = '<div class="dream-steps"><div class="dsec-head"><h3>Кроки</h3>' + (n ? '<span class="td-count">' + k + ' / ' + n + '</span>' : '') + '</div>';
     if (n) html += '<div class="bar" aria-hidden="true"><i style="width:' + Math.round(k / n * 100) + '%"></i></div>';
-    html += '<ul class="steps td-list" id="steps-list">' + open.map(function (st) { return stepRow(st, false); }).join('') + '</ul>';
+    var still = stillSteps; stillSteps = false;
+    html += '<ul class="steps td-list' + (still ? ' still' : '') + '" id="steps-list">' + open.map(function (st) { return stepRow(st, false); }).join('') + '</ul>';
     html += '<form id="step-form" class="td-new"><span class="td-plus">' + I_PLUS + '</span><input type="text" id="step-input" maxlength="140" placeholder="Додати крок" autocomplete="off" enterkeyhint="done" aria-label="Додати крок">' +
       '<button type="submit" class="td-go" aria-label="Додати">' + CHECK + '</button></form>';
     if (done.length) {
@@ -2155,46 +2156,86 @@
   })();
 
 
-  // drag a step by its grip to reorder (works with mouse and touch)
+  // drag a step by its grip to reorder: the row follows the finger, the others slide aside,
+  // and on release it settles into its place (same feel as the home menu)
+  var stillSteps = false;
   (function () {
-    var drag = null;
+    var drag = null, raf = 0;
+    function place() {
+      raf = 0;
+      if (!drag) return;
+      var dy = drag.y - drag.y0 + (window.scrollY - drag.s0);
+      drag.li.style.transform = 'translateY(' + dy + 'px) scale(1.02)';
+      var c = drag.rects[drag.from].top + drag.rects[drag.from].height / 2 + dy;
+      var to = drag.from;
+      for (var i = 0; i < drag.rects.length; i++) {
+        var m = drag.rects[i].top + drag.rects[i].height / 2;
+        if (i < drag.from && c < m) { to = i; break; }
+        if (i > drag.from && c > m) to = i;
+      }
+      drag.to = to;
+      var h = drag.rects[drag.from].height + drag.gap;
+      drag.rows.forEach(function (r, i) {
+        if (i === drag.from) return;
+        var sh = (drag.from < to && i > drag.from && i <= to) ? -h : (drag.from > to && i < drag.from && i >= to) ? h : 0;
+        r.style.transform = sh ? 'translateY(' + sh + 'px)' : '';
+      });
+      var edge = 70, step = 0;
+      if (drag.y < edge) step = -Math.ceil((edge - drag.y) / 6);
+      else if (drag.y > innerHeight - edge) step = Math.ceil((drag.y - (innerHeight - edge)) / 6);
+      if (step) { window.scrollBy(0, step); raf = requestAnimationFrame(place); }
+    }
     document.addEventListener('pointerdown', function (e) {
       var g = e.target.closest && e.target.closest('[data-grip]');
-      if (!g || (e.button && e.button !== 0)) return;
-      var li = g.closest('.step');
-      if (!li) return;
+      if (!g || (e.button && e.button !== 0) || drag) return;
+      var li = g.closest('.step'), list = li && li.parentNode;
+      if (!li || !list || list.classList.contains('done')) return;
       e.preventDefault();
-      drag = { li: li, y0: e.clientY };
+      var rows = [].slice.call(list.children).filter(function (x) { return x.classList.contains('step'); });
+      if (rows.length < 2) return;
+      var rects = rows.map(function (r) { var b = r.getBoundingClientRect(); return { top: b.top, height: b.height }; });
+      var from = rows.indexOf(li);
+      drag = { li: li, rows: rows, rects: rects, from: from, to: from, y0: e.clientY, y: e.clientY, s0: window.scrollY,
+        gap: rects.length > 1 ? Math.max(0, rects[1].top - rects[0].top - rects[0].height) : 6 };
+      list.classList.add('sorting');
       li.classList.add('dragging');
+      try { g.setPointerCapture(e.pointerId); } catch (x) {}
+      if (navigator.vibrate) { try { navigator.vibrate(8); } catch (x) {} }
     });
     document.addEventListener('pointermove', function (e) {
       if (!drag) return;
-      drag.li.style.transform = 'translateY(' + (e.clientY - drag.y0) + 'px)';
+      drag.y = e.clientY;
+      if (!raf) raf = requestAnimationFrame(place);
     });
-    function finish(e, cancel) {
+    function finish(cancel) {
       if (!drag) return;
-      var li = drag.li, list = li.parentNode;
-      li.classList.remove('dragging'); li.style.transform = '';
-      drag = null;
-      if (cancel) return;
-      var d = curDream(); if (!d) return;
-      var others = [].slice.call(list.children).filter(function (x) { return x !== li && !x.classList.contains('is-done'); });
-      var order = [], placed = false;
-      others.forEach(function (x) {
-        var r = x.getBoundingClientRect();
-        if (!placed && e.clientY < r.top + r.height / 2) { order.push(li.getAttribute('data-sid')); placed = true; }
-        order.push(x.getAttribute('data-sid'));
-      });
-      if (!placed) order.push(li.getAttribute('data-sid'));
-      var open = d.steps.filter(function (x) { return !x.d; });
-      var same = open.every(function (x, i) { return x.id === order[i]; });
-      if (same) return;
-      var byId = {}; d.steps.forEach(function (x) { byId[x.id] = x; });
-      var next = order.map(function (id) { return byId[id]; }).concat(d.steps.filter(function (x) { return x.d; }));
-      run(function () { return saveSteps(d, next); });
+      var d = drag; drag = null;
+      if (raf) { cancelAnimationFrame(raf); raf = 0; }
+      var list = d.li.parentNode;
+      var to = cancel ? d.from : d.to;
+      // settle the dragged row into its slot
+      var slot = 0;
+      if (to > d.from) for (var i = d.from + 1; i <= to; i++) slot += d.rects[i].height + d.gap;
+      else if (to < d.from) for (var j = to; j < d.from; j++) slot -= d.rects[j].height + d.gap;
+      d.li.classList.remove('dragging'); d.li.classList.add('settling');
+      d.li.style.transform = 'translateY(' + slot + 'px)';
+      var dr = curDream();
+      setTimeout(function () {
+        d.rows.forEach(function (r) { r.style.transform = ''; r.classList.remove('settling'); });
+        list.classList.remove('sorting');
+        if (to === d.from || !dr) return;
+        var open = dr.steps.filter(function (x) { return !x.d; });
+        var ids = d.rows.map(function (r) { return r.getAttribute('data-sid'); });
+        var moved = ids.splice(d.from, 1)[0]; ids.splice(to, 0, moved);
+        var byId = {}; dr.steps.forEach(function (x) { byId[x.id] = x; });
+        var next = ids.map(function (id) { return byId[id]; }).filter(Boolean).concat(dr.steps.filter(function (x) { return x.d; }));
+        if (next.length !== dr.steps.length) return;
+        stillSteps = true;
+        run(function () { return saveSteps(dr, next); });
+      }, cancel ? 0 : 200);
     }
-    document.addEventListener('pointerup', function (e) { finish(e, false); });
-    document.addEventListener('pointercancel', function (e) { finish(e, true); });
+    document.addEventListener('pointerup', function () { finish(false); });
+    document.addEventListener('pointercancel', function () { finish(true); });
   })();
 
   document.addEventListener('keydown', function (e) {

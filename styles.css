@@ -1367,3 +1367,12 @@ button.tc-photo { cursor: pointer; }
 .sheet.cinema .gal-grid .gal-item:first-child { grid-column: span 2; grid-row: span 2; }
 @media (max-width: 620px) { .sheet.cinema .gal-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
 .sheet.cinema .trash-empty { color: rgba(255, 255, 255, .6); } .sheet.cinema .trash-empty strong { color: #fff; }
+
+/* step reordering: neighbours slide, the lifted row follows the finger and settles */
+.td-list.sorting .step.td { transition: transform .22s cubic-bezier(.2, .8, .3, 1); animation: none; }
+.td-list.sorting .step.td.dragging { transition: none; z-index: 5; background: var(--glass, var(--surface)); box-shadow: 0 14px 34px rgba(0, 0, 0, .25); }
+.td-list.sorting .step.td.settling { transition: transform .2s cubic-bezier(.2, .8, .3, 1), box-shadow .2s; }
+.td-list.sorting { user-select: none; -webkit-user-select: none; }
+.td-list.still .step.td { animation: none; }
+.step.td .grip { width: 28px; left: -8px; opacity: .35; touch-action: none; }
+@media (hover: hover) { .step.td:hover .grip { opacity: .8; } }
