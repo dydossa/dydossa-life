@@ -1080,14 +1080,20 @@
     var trail = [], cur = dv.folder ? findFile(d, dv.folder) : null;
     if (dv.folder && !cur) dv.folder = null;
     while (cur) { trail.unshift(cur); cur = cur.parent ? findFile(d, cur.parent) : null; }
-    var nAll = filesOf(d).filter(function (f) { return f.kind !== 'folder'; }).length;
-    var html = '<div class="dsec-head"><h3>Матеріали</h3>' +
-      '<button type="button" class="add-btn" data-action="m-add" aria-expanded="' + dv.add + '">' + I_PLUS + 'Додати</button></div>';
-    if (trail.length) {
-      html += '<nav class="crumbs" aria-label="Шлях"><button type="button" class="crumb" data-action="m-folder" data-m="">Усі матеріали</button>' +
-        trail.map(function (f, i) {
-          return '<span aria-hidden="true">/</span><button type="button" class="crumb" data-action="m-folder" data-m="' + f.id + '"' + (i === trail.length - 1 ? ' aria-current="page"' : '') + '>' + esc(f.name) + '</button>';
-        }).join('') + '</nav>';
+    var here = trail.length ? trail[trail.length - 1] : null;
+    var up = here ? (here.parent || '') : null;
+    var upName = here && here.parent ? (findFile(d, here.parent) || {}).name : 'Усі матеріали';
+    var html;
+    if (here) {
+      // inside a folder: a back button, the folder's name and size, and the add button
+      var cnt = childrenOf(d, here.id).length;
+      html = '<div class="fhead"><button type="button" class="fback" data-action="m-folder" data-m="' + up + '" aria-label="Назад: ' + esc(upName) + '">' + I_BACK + '</button>' +
+        '<span class="fhead-icon">' + I_FOLDER + '</span>' +
+        '<div class="fhead-text"><h3>' + esc(here.name) + '</h3><span class="meta">' + (cnt ? cnt + ' ' + plural(cnt, 'елемент', 'елементи', 'елементів') : 'порожня') + ' · у «' + esc(upName) + '»</span></div>' +
+        '<button type="button" class="add-btn" data-action="m-add" aria-expanded="' + dv.add + '">' + I_PLUS + 'Додати</button></div>';
+    } else {
+      html = '<div class="dsec-head"><h3>Матеріали</h3>' +
+        '<button type="button" class="add-btn" data-action="m-add" aria-expanded="' + dv.add + '">' + I_PLUS + 'Додати</button></div>';
     }
     if (dv.add) {
       html += '<div class="add-menu">' +

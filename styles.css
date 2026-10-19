@@ -414,3 +414,15 @@ p.empty { margin: 0; }
 .more:hover, .more[aria-expanded="true"] { background: var(--surface-2); color: var(--ink); }
 .m-menu { display: flex; gap: 8px; flex-wrap: wrap; padding-left: 52px; }
 .m-row.open { background: var(--bg); }
+
+/* inside a folder: back button + folder name instead of a text path */
+.fhead { display: flex; align-items: center; gap: 12px; min-width: 0; }
+.fback { width: 44px; height: 44px; flex: none; border-radius: 50%; border: 1px solid var(--line); background: var(--surface); color: var(--ink); display: grid; place-items: center; padding: 0; }
+.fback svg { width: 22px; height: 22px; }
+.fback:hover { background: var(--surface-2); }
+.fhead-icon { width: 44px; height: 44px; flex: none; border-radius: 14px; background: var(--accent-soft); color: var(--accent-strong); display: grid; place-items: center; }
+.fhead-icon svg { width: 24px; height: 24px; }
+.fhead-text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.fhead-text h3 { margin: 0; font-family: var(--font-display); font-size: 1.2rem; line-height: 1.2; overflow-wrap: anywhere; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.fhead-text .meta { font-size: .82rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+@media (max-width: 420px) { .fhead .fhead-icon { display: none; } .fhead .add-btn { padding: 8px 12px 8px 10px; } }
