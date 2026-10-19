@@ -985,8 +985,12 @@
     var html = '<div class="section-head"><h2>Мрії</h2></div><div style="height:12px"></div>';
     if (!total) html += '<div class="empty">Мрій поки немає.</div><div style="height:16px"></div>';
     else if (!list.length) html += '<div class="empty">Тут поки порожньо.</div><div style="height:16px"></div>';
-    else html += '<div class="grid">' + list.map(dreamCard).join('') + '<button type="button" class="add-card dream-add" data-action="dream-add">+ Нова мрія</button></div>';
-    if (!list.length) html += '<button type="button" class="add-card" style="width:100%" data-action="dream-add">+ Нова мрія</button>';
+    else {
+      var cur = list.filter(function (d) { return d.status !== 'done'; }), fin = list.filter(function (d) { return d.status === 'done'; });
+      html += '<div class="grid">' + cur.map(dreamCard).join('') + '<button type="button" class="add-card dream-add" data-action="dream-add">+ Нова мрія</button></div>';
+      if (fin.length) html += '<div style="height:28px"></div><div class="section-head"><h2>Здійснені</h2></div><div style="height:12px"></div><div class="grid">' + fin.map(dreamCard).join('') + '</div>';
+    }
+    if (!total) html += '<button type="button" class="add-card" style="width:100%" data-action="dream-add">+ Нова мрія</button>';
     dreamsView.innerHTML = html;
   }
 

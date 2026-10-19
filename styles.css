@@ -559,3 +559,7 @@ body.on-dreams .grid { grid-template-columns: repeat(auto-fill, minmax(min(100%,
 form.td-add { flex-direction: row; align-items: center; }
 
 .check, .check.sm { border-radius: 50%; }
+
+body.on-dreams .grid { grid-template-columns: 1fr; }
+@media (min-width: 560px) { body.on-dreams .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (min-width: 900px) { body.on-dreams .grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
