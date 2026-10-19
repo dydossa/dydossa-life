@@ -757,3 +757,59 @@ button.hl-item { cursor: pointer; }
   .hl-head { display: none; }
 }
 @media (prefers-reduced-motion: reduce) { .hl-pv-hex, .hl-dot, .hlist.entering *, .hl-pv-in { animation: none !important; } }
+
+/* ---------- the flower as a ring of hexagon badges ---------- */
+.hexring .hub-glow { animation: breathe 6s ease-in-out infinite; }
+.hx { outline: none; }
+.hx.ready, .hx.soon { cursor: pointer; }
+.hx-float { animation: hxFloat 7s ease-in-out infinite; animation-delay: calc(var(--i) * -0.9s); }
+@keyframes hxFloat { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-5px); } }
+.hx-in { transform-box: fill-box; transform-origin: center; transition: transform .45s cubic-bezier(.2, .9, .25, 1.35), filter .35s, opacity .35s; }
+.hx-hit { fill: transparent; }
+.hx-frame { fill: none; stroke: var(--c); stroke-width: 4; stroke-linejoin: round; }
+.hx-fill { fill: var(--c); }
+.hx-icon { color: var(--bg); }
+body.on-home .wheel .hx.soon { --c: var(--soon); }
+.hx.soon .hx-in { opacity: .55; }
+.hx.empty .hx-frame { stroke: var(--w-line); stroke-width: 2; stroke-dasharray: 6 8; }
+.hx-soon { fill: var(--muted); font-family: var(--font-display); font-size: 21px; font-style: italic; letter-spacing: .06em; opacity: .7; }
+.hx-ripple { fill: none; stroke: var(--c); stroke-width: 3; opacity: 0; transform-box: fill-box; transform-origin: center; }
+.hx .p-dot circle { stroke: var(--bg); stroke-width: 4; }
+body.on-home { --soon: #8C8FA8; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) body.on-home { --soon: #5E6180; } }
+:root[data-theme="dark"] body.on-home { --soon: #5E6180; }
+
+.hx.ready:focus-visible .hx-in, .hx.tap .hx-in { transform: scale(1.1); filter: drop-shadow(0 0 18px color-mix(in srgb, var(--c) 70%, transparent)); }
+.hx.tap .hx-ripple { animation: ripple .55s ease-out; }
+.hx.nope .hx-in { animation: nope .5s ease-in-out; }
+@media (hover: hover) {
+  .hx.ready:hover .hx-in { transform: scale(1.1); filter: drop-shadow(0 0 18px color-mix(in srgb, var(--c) 70%, transparent)); }
+  .hx.soon:hover .hx-in { transform: scale(1.04); opacity: .8; }
+  .hexring:has(.hx.ready:hover) .hx:not(:hover) .hx-in { opacity: .35; }
+  .hexring:has(.hx.ready:hover) .hx.soon:not(:hover) .hx-in { opacity: .25; }
+}
+
+/* the emblem */
+.emb-in { transform-box: fill-box; transform-origin: center; }
+.emb-top { fill: var(--emb-a); }
+.emb-bot { fill: var(--emb-b); }
+.emb-icon { color: var(--bg); }
+body.on-home { --emb-a: #3F9A5E; --emb-b: #B9DE8E; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) body.on-home { --emb-a: #4FAE6C; --emb-b: #C9E9A0; } }
+:root[data-theme="dark"] body.on-home { --emb-a: #4FAE6C; --emb-b: #C9E9A0; }
+.emblem { filter: drop-shadow(0 0 26px color-mix(in srgb, var(--emb-a) 45%, transparent)); }
+.c-label { opacity: 0; transition: opacity .3s; pointer-events: none; }
+.c-label circle { fill: color-mix(in srgb, var(--bg) 96%, transparent); stroke: var(--c, var(--emb-a)); stroke-width: 3; }
+.c-label.on { opacity: 1; }
+.c-name { fill: var(--c, var(--ink)); font-family: var(--font-display); font-weight: 700; font-size: 34px; letter-spacing: .12em; text-transform: uppercase; }
+.c-label.soon .c-name { fill: var(--muted); }
+.c-label.soon circle { stroke: var(--soon); }
+.c-label.on .c-name { animation: cname .4s cubic-bezier(.2, .9, .25, 1); }
+@keyframes cname { from { opacity: 0; transform: translateY(8px); } }
+
+/* first appearance: the emblem pops, badges fly out of it one by one */
+.hexring.intro .emb-in { animation: hubIn .7s cubic-bezier(.2, .9, .3, 1.3) backwards; }
+.hexring.intro .hx-in { animation: hxIn .8s cubic-bezier(.2, .9, .25, 1.2) backwards; animation-delay: calc(.2s + var(--i) * 75ms); }
+@keyframes hxIn { from { transform: scale(.2) rotate(-60deg); opacity: 0; } }
+@media (pointer: coarse) { .c-name { font-size: 40px; } }
+@media (prefers-reduced-motion: reduce) { .hx-float, .hexring .hub-glow, .hexring.intro * { animation: none !important; } }
