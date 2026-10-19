@@ -582,6 +582,7 @@
   var waterForm = document.getElementById('water-form');
   var plantForm = document.getElementById('plant-form');
   var galleryEl = document.getElementById('gallery');
+  var stepSheet = document.getElementById('step-sheet');
   var wDate = document.getElementById('w-date');
   var wCam = document.getElementById('w-cam');
   var wLib = document.getElementById('w-lib');
@@ -633,7 +634,10 @@
     plantForm.hidden = !(type === 'edit' || type === 'add');
     galleryEl.hidden = type !== 'gallery';
     dreamForm.hidden = !(type === 'dream-add' || type === 'dream-edit');
+    stepSheet.hidden = type !== 'step';
     sheetEl.classList.toggle('wide', type === 'gallery');
+    sheetEl.classList.toggle('side', type === 'step');
+    overlay.classList.toggle('side', type === 'step');
     var first = null;
     if (type === 'water') {
       var p = findPlant(id);
@@ -660,6 +664,10 @@
       pDelete.hidden = true;
       pSubmit.disabled = false;
       first = pName;
+    } else if (type === 'step') {
+      sheetTitle.textContent = 'Крок';
+      renderStepSheet();
+      first = overlay.querySelector('[data-action="close"]');
     } else if (type === 'dream-add' || type === 'dream-edit') {
       var dd = type === 'dream-edit' ? findDream(id) : null;
       sheetTitle.textContent = dd ? 'Змінити мрію' : 'Нова мрія';
@@ -759,6 +767,7 @@
   var I_CLIP = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20.5 11.5l-8.2 8.2a5 5 0 0 1-7.1-7.1l8.5-8.5a3.3 3.3 0 0 1 4.7 4.7l-8.5 8.5a1.7 1.7 0 0 1-2.4-2.4l7.8-7.8"/></svg>';
   var I_X = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>';
   var I_EDIT = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20h4L19 9l-4-4L4 16z"/><path d="M13.5 6.5l4 4"/></svg>';
+  var I_GRIP = '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="9" cy="6" r="1.5"/><circle cx="15" cy="6" r="1.5"/><circle cx="9" cy="12" r="1.5"/><circle cx="15" cy="12" r="1.5"/><circle cx="9" cy="18" r="1.5"/><circle cx="15" cy="18" r="1.5"/></svg>';
   var I_PLUS = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>';
   var I_MORE = '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="5" cy="12" r="1.8"/><circle cx="12" cy="12" r="1.8"/><circle cx="19" cy="12" r="1.8"/></svg>';
   var I_PALETTE = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3a9 9 0 1 0 0 18c1.4 0 2-.9 2-1.8 0-1.4-1.2-1.5-1.2-2.7 0-.9.7-1.5 1.6-1.5H17a4 4 0 0 0 4-4c0-4.4-4-8-9-8z"/><circle cx="7.5" cy="11" r="1"/><circle cx="10" cy="7" r="1"/><circle cx="14.5" cy="7" r="1"/></svg>';
@@ -1072,37 +1081,25 @@
     if (n) html += '<div class="bar" aria-hidden="true"><i style="width:' + Math.round(k / n * 100) + '%"></i></div>';
     html += '<form id="step-form" class="step-add"><input type="text" id="step-input" maxlength="140" placeholder="Новий крок" autocomplete="off" aria-label="Новий крок">' +
       '<button type="submit" class="secondary">Додати</button></form>';
-    html += '<ul class="steps">' + ordered.map(function (st) {
-      var open = dv.step === st.id, subs = st.s || [];
-      var sd = subs.filter(function (x) { return x.d; }).length;
-      var key = 'step:' + st.id;
+    html += '<ul class="steps" id="steps-list">' + ordered.map(function (st) {
+      var subs = st.s || [], key = 'step:' + st.id;
       var row = '<div class="step-row">' +
+        (st.d ? '<span class="grip off"></span>' : '<span class="grip" data-grip aria-hidden="true">' + I_GRIP + '</span>') +
         '<button type="button" class="check" role="checkbox" aria-checked="' + !!st.d + '" data-action="step-toggle" data-step="' + esc(st.id) + '" aria-label="' + esc(st.t) + '">' + CHECK + '</button>' +
         '<button type="button" class="step-t" data-action="step-edit" data-step="' + esc(st.id) + '">' + esc(st.t) + '</button>' +
-        '<button type="button" class="ico" data-action="step-edit" data-step="' + esc(st.id) + '" aria-label="Редагувати" aria-expanded="' + open + '">' + I_EDIT + '</button>' +
+        '<button type="button" class="ico" data-action="step-edit" data-step="' + esc(st.id) + '" aria-label="Редагувати">' + I_EDIT + '</button>' +
         (ui.confirm === key
           ? '<button type="button" class="ico sure" data-action="step-del" data-step="' + esc(st.id) + '">Видалити?</button>'
           : '<button type="button" class="ico" data-action="step-del" data-step="' + esc(st.id) + '" aria-label="Прибрати">' + I_X + '</button>') +
         '</div>';
       var body = '';
-      if (open) {
-        body = '<div class="step-edit"><input type="text" id="step-title" maxlength="140" value="' + esc(st.t) + '" aria-label="Назва кроку">' +
-          '<textarea id="step-note" rows="2" maxlength="2000" placeholder="Опис" aria-label="Опис">' + esc(st.n || '') + '</textarea>' +
-          '<ul class="subs">' + subs.map(function (x) {
-            return '<li class="sub' + (x.d ? ' is-done' : '') + '"><button type="button" class="check sm" role="checkbox" aria-checked="' + !!x.d + '" data-action="sub-toggle" data-step="' + esc(st.id) + '" data-sub="' + esc(x.id) + '" aria-label="' + esc(x.t) + '">' + CHECK + '</button>' +
-              '<span class="step-t">' + esc(x.t) + '</span>' +
-              '<button type="button" class="ico" data-action="sub-del" data-step="' + esc(st.id) + '" data-sub="' + esc(x.id) + '" aria-label="Прибрати">' + I_X + '</button></li>';
-          }).join('') + '</ul>' +
-          '<form class="step-add sub-form" data-step="' + esc(st.id) + '"><input type="text" id="sub-input" maxlength="140" placeholder="Підкрок" autocomplete="off" aria-label="Підкрок">' +
-          '<button type="submit" class="secondary">Додати</button></form>' +
-          '<button type="button" class="link-btn" data-action="step-edit" data-step="' + esc(st.id) + '" style="align-self:flex-end">Готово</button></div>';
-      } else if (st.n || subs.length) {
-        body = '<div class="step-sub">' + (st.n ? '<p>' + esc(st.n) + '</p>' : '') +
-          (subs.length ? '<ul class="subs">' + subs.map(function (x) {
-            return '<li class="sub' + (x.d ? ' is-done' : '') + '"><button type="button" class="check sm" role="checkbox" aria-checked="' + !!x.d + '" data-action="sub-toggle" data-step="' + esc(st.id) + '" data-sub="' + esc(x.id) + '" aria-label="' + esc(x.t) + '">' + CHECK + '</button><span class="step-t">' + esc(x.t) + '</span></li>';
-          }).join('') + '</ul>' : '') + '</div>';
+      if (st.n || subs.length) {
+        var sd = subs.filter(function (x) { return x.d; }).length;
+        body = '<button type="button" class="step-sub" data-action="step-edit" data-step="' + esc(st.id) + '">' +
+          (subs.length ? '<span>' + sd + ' з ' + subs.length + ' ' + plural(subs.length, 'підкроку', 'підкроків', 'підкроків') + '</span>' : '') +
+          (st.n ? '<span class="n">' + esc(st.n) + '</span>' : '') + '</button>';
       }
-      return '<li class="step' + (st.d ? ' is-done' : '') + (open ? ' is-open' : '') + '">' + row + body + '</li>';
+      return '<li class="step' + (st.d ? ' is-done' : '') + '" data-sid="' + esc(st.id) + '">' + row + body + '</li>';
     }).join('') + '</ul>';
     return html + '</div>';
   }
@@ -1194,6 +1191,31 @@
     return html;
   }
 
+  function renderStepSheet() {
+    var d = curDream(), st = d && ui.sheet && ui.sheet.type === 'step' ? d.steps.filter(function (x) { return x.id === ui.sheet.id; })[0] : null;
+    if (!st) { if (ui.sheet && ui.sheet.type === 'step') closeSheet(); return; }
+    var keep = {};
+    ['step-title', 'step-note', 'sub-input'].forEach(function (k) { var el = document.getElementById(k); if (el && stepSheet.contains(el)) keep[k] = el.value; });
+    var focusId = document.activeElement && stepSheet.contains(document.activeElement) ? document.activeElement.id : null;
+    var subs = st.s || [], key = 'step:' + st.id;
+    stepSheet.innerHTML =
+      '<div class="td-card td-title' + (st.d ? ' is-done' : '') + '">' +
+        '<button type="button" class="check" role="checkbox" aria-checked="' + !!st.d + '" data-action="step-toggle" data-step="' + esc(st.id) + '" aria-label="Виконано">' + CHECK + '</button>' +
+        '<input type="text" id="step-title" maxlength="140" value="' + esc(st.t) + '" aria-label="Назва кроку"></div>' +
+      '<div class="td-card">' +
+        '<ul class="subs">' + subs.map(function (x) {
+          return '<li class="sub' + (x.d ? ' is-done' : '') + '"><button type="button" class="check sm" role="checkbox" aria-checked="' + !!x.d + '" data-action="sub-toggle" data-step="' + esc(st.id) + '" data-sub="' + esc(x.id) + '" aria-label="Виконано">' + CHECK + '</button>' +
+            '<input type="text" class="sub-t" data-step="' + esc(st.id) + '" data-sub="' + esc(x.id) + '" maxlength="140" value="' + esc(x.t) + '" aria-label="Підкрок">' +
+            '<button type="button" class="ico" data-action="sub-del" data-step="' + esc(st.id) + '" data-sub="' + esc(x.id) + '" aria-label="Прибрати">' + I_X + '</button></li>';
+        }).join('') + '</ul>' +
+        '<form class="sub-form td-add" data-step="' + esc(st.id) + '"><span class="td-plus">' + I_PLUS + '</span>' +
+        '<input type="text" id="sub-input" maxlength="140" placeholder="Додати підкрок" autocomplete="off" aria-label="Додати підкрок"></form></div>' +
+      '<div class="td-card"><textarea id="step-note" rows="4" maxlength="2000" placeholder="Додати нотатку" aria-label="Нотатка">' + esc(st.n || '') + '</textarea></div>' +
+      '<button type="button" class="danger" data-action="step-del" data-step="' + esc(st.id) + '">' + (ui.confirm === key ? 'Точно видалити?' : 'Видалити крок') + '</button>';
+    Object.keys(keep).forEach(function (k) { var el = document.getElementById(k); if (el) el.value = keep[k]; });
+    if (focusId) { var fe = document.getElementById(focusId); if (fe) fe.focus({ preventScroll: true }); }
+  }
+
   function curDream() { return ui.dreamId ? findDream(ui.dreamId) : null; }
 
   // a dream's own page: a big cover with the title, a few numbers, why, the "came true" part,
@@ -1249,6 +1271,7 @@
     dreamsView.innerHTML = html;
     Object.keys(keep).forEach(function (key) { var el = document.getElementById(key); if (el) el.value = keep[key]; });
     if (focusId) { var fe = document.getElementById(focusId); if (fe) fe.focus({ preventScroll: true }); }
+    if (ui.sheet && ui.sheet.type === 'step') renderStepSheet();
   }
   var renderDreamDetail = renderDreamPage;
 
@@ -1316,8 +1339,14 @@
   function mapStep(d, sid, fn) { return d.steps.map(function (x) { return x.id === sid ? fn(x) : x; }); }
   document.addEventListener('change', function (e) {
     var tid = e.target && e.target.id;
-    if ((tid === 'step-title' || tid === 'step-note') && dv.step) {
-      var dd = curDream(), sid = dv.step, v = e.target.value;
+    if (e.target && e.target.classList && e.target.classList.contains('sub-t')) {
+      var d3 = curDream(), ps3 = e.target.getAttribute('data-step'), sb3 = e.target.getAttribute('data-sub'), v3 = e.target.value.trim();
+      if (!d3 || !v3) return;
+      run(function () { return saveSteps(d3, mapStep(d3, ps3, function (x) { return { id: x.id, t: x.t, d: x.d, n: x.n, s: (x.s || []).map(function (y) { return y.id === sb3 ? { id: y.id, t: v3, d: y.d } : y; }) }; })); });
+      return;
+    }
+    if ((tid === 'step-title' || tid === 'step-note') && ui.sheet && ui.sheet.type === 'step') {
+      var dd = curDream(), sid = ui.sheet.id, v = e.target.value;
       if (!dd) return;
       if (tid === 'step-title' && !v.trim()) return;
       run(function () {
@@ -1372,7 +1401,7 @@
         return true;
       case 'm-add': dv.add = !dv.add; dv.inline = null; renderDreamDetail(); return true;
       case 'm-menu': dv.menu = dv.menu === m ? null : m; ui.confirm = null; renderDreamDetail(); return true;
-      case 'step-edit': { var es = el.getAttribute('data-step'); dv.step = dv.step === es ? null : es; ui.confirm = null; renderDreamDetail(); return true; }
+      case 'step-edit': openSheet('step', el.getAttribute('data-step')); return true;
       case 'sub-toggle':
       case 'sub-del': {
         var ps = el.getAttribute('data-step'), sb2 = el.getAttribute('data-sub');
@@ -1388,6 +1417,7 @@
       case 'step-del':
         var sid = el.getAttribute('data-step');
         if (act === 'step-del' && ui.confirm !== 'step:' + sid) { ui.confirm = 'step:' + sid; renderDreamDetail(); return true; }
+        if (act === 'step-del' && ui.sheet && ui.sheet.type === 'step') closeSheet();
         ui.confirm = null;
         var next = act === 'step-del'
           ? d.steps.filter(function (s) { return s.id !== sid; })
@@ -1597,6 +1627,49 @@
       e.preventDefault(); depth = 0; setDrag(false);
       if (!dv.note) uploadMaterials(Array.prototype.slice.call(e.dataTransfer.files));
     });
+  })();
+
+
+  // drag a step by its grip to reorder (works with mouse and touch)
+  (function () {
+    var drag = null;
+    document.addEventListener('pointerdown', function (e) {
+      var g = e.target.closest && e.target.closest('[data-grip]');
+      if (!g || (e.button && e.button !== 0)) return;
+      var li = g.closest('.step');
+      if (!li) return;
+      e.preventDefault();
+      drag = { li: li, y0: e.clientY };
+      li.classList.add('dragging');
+    });
+    document.addEventListener('pointermove', function (e) {
+      if (!drag) return;
+      drag.li.style.transform = 'translateY(' + (e.clientY - drag.y0) + 'px)';
+    });
+    function finish(e, cancel) {
+      if (!drag) return;
+      var li = drag.li, list = li.parentNode;
+      li.classList.remove('dragging'); li.style.transform = '';
+      drag = null;
+      if (cancel) return;
+      var d = curDream(); if (!d) return;
+      var others = [].slice.call(list.children).filter(function (x) { return x !== li && !x.classList.contains('is-done'); });
+      var order = [], placed = false;
+      others.forEach(function (x) {
+        var r = x.getBoundingClientRect();
+        if (!placed && e.clientY < r.top + r.height / 2) { order.push(li.getAttribute('data-sid')); placed = true; }
+        order.push(x.getAttribute('data-sid'));
+      });
+      if (!placed) order.push(li.getAttribute('data-sid'));
+      var open = d.steps.filter(function (x) { return !x.d; });
+      var same = open.every(function (x, i) { return x.id === order[i]; });
+      if (same) return;
+      var byId = {}; d.steps.forEach(function (x) { byId[x.id] = x; });
+      var next = order.map(function (id) { return byId[id]; }).concat(d.steps.filter(function (x) { return x.d; }));
+      run(function () { return saveSteps(d, next); });
+    }
+    document.addEventListener('pointerup', function (e) { finish(e, false); });
+    document.addEventListener('pointercancel', function (e) { finish(e, true); });
   })();
 
   window.addEventListener('popstate', function () {

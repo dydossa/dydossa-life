@@ -521,10 +521,39 @@ body.on-dreams .grid { grid-template-columns: repeat(auto-fill, minmax(min(100%,
 .ico.sure { width: auto; padding: 0 12px; border-radius: 999px; background: #FBE4E0; color: #A33A2B; font-size: .85rem; font-weight: 600; }
 .check.sm { width: 22px; height: 22px; border-radius: 7px; }
 .check.sm svg { width: 14px; height: 14px; }
-.step-sub, .step-edit { margin-left: 38px; display: flex; flex-direction: column; gap: 8px; }
-.step-sub p { margin: 0; color: var(--muted); font-size: .9rem; white-space: pre-wrap; overflow-wrap: anywhere; }
+
 .subs { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
 .sub { display: flex; align-items: center; gap: 10px; font-size: .94rem; }
 .sub.is-done .step-t { color: var(--muted); text-decoration: line-through; }
 .step-edit input[type="text"], .step-edit textarea { width: 100%; border: 1px solid var(--line); background: var(--bg); border-radius: 12px; padding: 10px 12px; font: inherit; color: inherit; }
 .step-edit textarea { resize: vertical; }
+
+.grip { width: 18px; flex: none; color: var(--muted); opacity: .55; display: grid; place-items: center; cursor: grab; touch-action: none; align-self: stretch; margin-left: -4px; }
+.grip svg { width: 16px; height: 16px; }
+.grip.off { cursor: default; visibility: hidden; }
+.grip:hover { opacity: 1; }
+.step.dragging { position: relative; z-index: 3; background: var(--surface); box-shadow: var(--shadow); border-radius: 12px; opacity: .95; cursor: grabbing; }
+.step-sub { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; margin-left: 56px; border: 0; background: transparent; padding: 0 0 4px; color: var(--muted); font-size: .85rem; text-align: left; cursor: pointer; font: inherit; font-size: .85rem; }
+.step-sub .n { overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow-wrap: anywhere; }
+
+/* To Do style detail pane */
+#step-sheet { display: flex; flex-direction: column; gap: 12px; }
+#step-sheet[hidden] { display: none; }
+.td-card { background: var(--bg); border: 1px solid var(--line); border-radius: 14px; padding: 6px 12px; }
+.td-title { display: flex; align-items: center; gap: 12px; padding: 10px 12px; }
+.td-title input { flex: 1; min-width: 0; border: 0; background: transparent; font-family: var(--font-display); font-size: 1.2rem; font-weight: 700; color: inherit; padding: 6px 0; outline: none; }
+.td-title.is-done input { text-decoration: line-through; color: var(--muted); }
+.td-card .subs { gap: 0; }
+.td-card .sub { padding: 4px 0; border-bottom: 1px solid var(--line); }
+.sub-t { flex: 1; min-width: 0; border: 0; background: transparent; color: inherit; font: inherit; padding: 8px 0; outline: none; }
+.sub.is-done .sub-t { color: var(--muted); text-decoration: line-through; }
+.td-add { display: flex; align-items: center; gap: 12px; padding: 6px 0; }
+.td-plus { width: 22px; height: 22px; display: grid; place-items: center; color: var(--accent); }
+.td-plus svg { width: 20px; height: 20px; }
+.td-add input { flex: 1; min-width: 0; border: 0; background: transparent; color: inherit; font: inherit; padding: 8px 0; outline: none; }
+.td-card textarea { width: 100%; border: 0; background: transparent; color: inherit; font: inherit; resize: vertical; padding: 8px 0; outline: none; }
+@media (min-width: 900px) {
+  .overlay.side { justify-content: flex-end; align-items: stretch; }
+  .sheet.side { max-width: 400px; max-height: none; height: 100%; border-radius: 0; border-width: 0 0 0 1px; }
+}
+form.td-add { flex-direction: row; align-items: center; }
