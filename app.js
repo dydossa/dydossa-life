@@ -550,8 +550,8 @@
   var wheelBuilt = false;
   // the flower: hexagon badges in a ring around a round emblem
   var RING = [
-    { a: 0, id: 'plants' }, { a: 45, id: 'dreams' }, { a: 90, id: 'piano' }, { a: 135 },
-    { a: 180 }, { a: 225 }, { a: 270, id: 'ants' }, { a: 315 }
+    { a: 0, id: 'plants' }, { a: 45, id: 'dreams' }, { a: 90, id: 'piano' }, { a: 135, id: 'ants' },
+    { a: 180 }, { a: 225 }, { a: 270 }, { a: 315 }
   ];
   function buildWheel() {
     var out = '<svg class="wheel hexring intro" viewBox="-420 -420 840 840" role="group" aria-label="Розділи">' +
@@ -563,6 +563,7 @@
       '<clipPath id="ctop"><rect x="-150" y="-150" width="300" height="150"/></clipPath>' +
       '<clipPath id="cbot"><rect x="-150" y="0" width="300" height="150"/></clipPath></defs>';
     out += '<circle class="hub-glow" r="230" fill="url(#hubglow)"/>';
+    var arcs = '';
     RING.forEach(function (w, n) {
       var sec = SECTIONS.filter(function (x) { return x.id === w.id; })[0];
       var ready = !!(sec && sec.ready), c = wp(282, w.a);
@@ -570,41 +571,38 @@
       var attrs = sec
         ? ' data-action="petal" data-section="' + sec.id + '" data-title="' + esc(sec.title) + '" role="button" tabindex="0" aria-label="' + esc(sec.title) + (ready ? '' : ', скоро') + '"'
         : ' aria-hidden="true"';
-      out += '<g class="' + cls + '"' + attrs + ' transform="translate(' + f1(c[0]) + ' ' + f1(c[1]) + ')" style="--i:' + n + '">' +
-        '<g class="hx-float"><g class="hx-in">' +
+      var dir = wp(16, w.a);
+      out += '<g class="' + cls + '"' + attrs + ' transform="translate(' + f1(c[0]) + ' ' + f1(c[1]) + ')" style="--i:' + n + ';--dx:' + f1(dir[0]) + 'px;--dy:' + f1(dir[1]) + 'px">' +
+        '<g class="hx-float"><g class="hx-move"><g class="hx-in">' +
         '<circle class="hx-ripple" r="106"/>' +
         '<polygon class="hx-hit" points="' + hexPoints(110) + '"/>' +
         '<polygon class="hx-frame" points="' + hexPoints(104) + '"/>';
       if (sec) {
-        out += '<polygon class="hx-fill" points="' + hexPoints(86) + '" filter="url(#grunge)"/>' +
-          '<g class="hx-icon" transform="translate(-43 -43) scale(3.6)" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round">' + inner(sec.icon) + '</g>' +
+        out += '<polygon class="hx-fill" points="' + hexPoints(86) + '"/>' +
+          '<g class="hx-icon-w"><g class="hx-icon" transform="translate(-43 -43) scale(3.6)" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round">' + inner(sec.icon) + '</g></g>' +
+          '<text class="hx-name" y="58" text-anchor="middle">' + esc(sec.title) + '</text>' +
           (w.id === 'plants' ? '<g class="p-dot" hidden><circle class="p-dot-ring" cx="80" cy="-72" r="12"/><circle cx="80" cy="-72" r="12"/></g>' : '');
       } else {
         out += '<text class="hx-soon" y="7" text-anchor="middle">soon…</text>';
       }
-      out += '</g></g></g>';
+      out += '</g></g></g></g>';
+      if (sec) {
+        var a0 = wp(158, w.a - 16), a1 = wp(158, w.a + 16);
+        arcs += '<path class="e-arc arc-' + sec.id + (ready ? '' : ' soon') + '" d="M' + f1(a0[0]) + ' ' + f1(a0[1]) + ' A158 158 0 0 1 ' + f1(a1[0]) + ' ' + f1(a1[1]) + '"/>';
+      }
     });
+    out += '<g class="e-arcs">' + arcs + '</g>';
     // the emblem: a two-tone disc with the sprout cut out of it
     out += '<g class="emblem"><g class="emb-in">' +
-      '<g filter="url(#grunge)"><circle class="emb-top" r="140" clip-path="url(#ctop)"/><circle class="emb-bot" r="140" clip-path="url(#cbot)"/></g>' +
+      '<circle class="emb-top" r="140" clip-path="url(#ctop)"/><circle class="emb-bot" r="140" clip-path="url(#cbot)"/>' +
       '<g transform="translate(-90 -96) scale(7.5)"><g class="emb-icon" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round">' +
       (reduceMotion ? '' : '<animateTransform attributeName="transform" type="rotate" values="-2.5 12 21;2.5 12 21;-2.5 12 21" dur="7s" repeatCount="indefinite" calcMode="spline" keySplines=".45 0 .55 1;.45 0 .55 1"/>') +
       inner(ICON_PLANT) + '</g></g>' +
-      '<g class="c-label"><circle r="141"/><text class="c-name" y="10" text-anchor="middle"></text></g>' +
+
       '</g></g></svg>';
     document.getElementById('wheel').innerHTML = out;
     wheelBuilt = true;
     var svg = document.querySelector('.wheel');
-    var lab = svg.querySelector('.c-label'), name = svg.querySelector('.c-name');
-    function show(h) {
-      if (!h) { lab.classList.remove('on'); return; }
-      name.textContent = h.getAttribute('data-title');
-      lab.setAttribute('class', 'c-label on ' + (h.className.baseVal.match(/s-\w+/) || [''])[0] + (h.classList.contains('soon') ? ' soon' : ''));
-    }
-    svg.addEventListener('pointerover', function (e) { show(e.target.closest('.hx[data-section]')); });
-    svg.addEventListener('pointerleave', function () { show(null); });
-    svg.addEventListener('focusin', function (e) { show(e.target.closest('.hx[data-section]')); });
-    svg.addEventListener('focusout', function () { show(null); });
     setTimeout(function () { svg.classList.remove('intro'); }, 2000);
   }
 
@@ -1972,11 +1970,22 @@
     var saved = localStorage.getItem(THEME_KEY);
     if (saved === 'dark' || saved === 'light') root.setAttribute('data-theme', saved);
   } catch (e) {}
+  // switching theme: the new one spreads out of the button as a growing circle
   themeBtn.addEventListener('click', function () {
     var next = isDark() ? 'light' : 'dark';
-    root.setAttribute('data-theme', next);
-    try { localStorage.setItem(THEME_KEY, next); } catch (e) {}
-    paintThemeBtn();
+    function apply() {
+      root.setAttribute('data-theme', next);
+      try { localStorage.setItem(THEME_KEY, next); } catch (e) {}
+      paintThemeBtn();
+    }
+    if (!document.startViewTransition || reduceMotion) { apply(); return; }
+    var r = themeBtn.getBoundingClientRect(), x = r.left + r.width / 2, y = r.top + r.height / 2;
+    var end = Math.hypot(Math.max(x, innerWidth - x), Math.max(y, innerHeight - y));
+    var t = document.startViewTransition(apply);
+    t.ready.then(function () {
+      root.animate({ clipPath: ['circle(0px at ' + x + 'px ' + y + 'px)', 'circle(' + end + 'px at ' + x + 'px ' + y + 'px)'] },
+        { duration: 650, easing: 'cubic-bezier(.4, 0, .2, 1)', pseudoElement: '::view-transition-new(root)' });
+    }).catch(function () {});
   });
   if (mq.addEventListener) mq.addEventListener('change', paintThemeBtn);
   paintThemeBtn();
