@@ -12,7 +12,7 @@
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
 <link rel="icon" type="image/png" href="icons/icon-192.png">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=Figtree:wght@400;500;600&display=swap">
-<link rel="stylesheet" href="styles.css?v=38">
+<link rel="stylesheet" href="styles.css?v=41">
 </head>
 <body>
 <div class="bg" id="bg" aria-hidden="true"><div class="bg-glow g1"></div><div class="bg-glow g2"></div><div class="bg-stars" id="bg-stars"></div><span class="shoot"></span></div>
@@ -81,7 +81,10 @@
 
   <!-- Dreams section -->
   <div class="section-screen" id="dreams-screen" hidden>
-    <p class="summary" id="dreams-summary"></p>
+    <header class="sec-hero s-dreams" id="dreams-hero">
+      <span class="sec-hex" id="dreams-hex" aria-hidden="true"></span>
+      <div class="sec-text"><h2>Мрії</h2><p class="summary" id="dreams-summary"></p></div>
+    </header>
     <main id="dreams-view"></main>
   </div>
 </div>
@@ -168,6 +171,6 @@
 
 <script src="vendor/supabase.js"></script>
 <script src="config.js"></script>
-<script src="app.js?v=38"></script>
+<script src="app.js?v=41"></script>
 </body>
 </html>
