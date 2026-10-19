@@ -977,12 +977,13 @@
           '<button type="button" class="gv-nav prev" data-action="gal-step" data-d="-1"' + (i0 === 0 ? ' disabled' : '') + ' aria-label="Попереднє фото">' + I_BACK + '</button>' +
           '<button type="button" class="gv-nav next" data-action="gal-step" data-d="1"' + (i0 === photos.length - 1 ? ' disabled' : '') + ' aria-label="Наступне фото">' + I_NEXT + '</button>' +
           '<span class="gv-chip gv-date">' + esc(fmtDate(l.date)) + '</span>' +
-          '<span class="gv-chip gv-count">' + (i0 + 1) + ' / ' + photos.length + '</span>' +
+          (photos.length > 1 ? '<span class="gv-chip gv-count">' + (i0 + 1) + ' / ' + photos.length + '</span>' : '') +
         '</div>' +
-        '<div class="gv-bar"><button type="button" class="gv-all" data-action="gal-back">' + I_GRID + '<span>Усі фото</span></button>' +
+        '<div class="gv-info"><strong>' + esc(fmtDate(l.date)) + '</strong><span>' + esc(gapText(p, l)) + '</span></div>' +
+        (photos.length < 2 ? '' : '<div class="gv-bar"><button type="button" class="gv-all" data-action="gal-back">' + I_GRID + '<span>Усі</span></button>') +
         '<div class="gv-strip" id="gv-strip">' + photos.map(function (x, i) {
-          return '<button type="button" class="gv-th"' + (i === i0 ? ' aria-current="true"' : '') + ' data-action="gal-open" data-i="' + i + '" aria-label="Фото від ' + esc(fmtDate(x.date)) + '"><img loading="lazy" decoding="async" src="' + esc(x.photo) + '" alt=""></button>';
-        }).join('') + '</div></div></div>';
+          return '<button type="button" class="gv-th"' + (i === i0 ? ' aria-current="true"' : '') + ' data-action="gal-open" data-i="' + i + '" aria-label="Фото від ' + esc(fmtDate(x.date)) + '"><img loading="lazy" decoding="async" src="' + esc(x.photo) + '" alt=""><small>' + esc(fmtDate(x.date)) + '</small></button>';
+        }).join('') + (photos.length < 2 ? '' : '</div></div>') + '</div>';
       ui.galDir = 0;
       var cur = galleryEl.querySelector('.gv-th[aria-current]');
       if (cur && cur.scrollIntoView) cur.scrollIntoView({ block: 'nearest', inline: 'center' });
@@ -993,6 +994,12 @@
     }).join('') + '</div>';
   }
   // the viewer also listens to arrow keys and to swipes
+  function gapText(p, l) {
+    var logs = ascLogs(p), i = logs.indexOf(l);
+    if (i <= 0) return 'перший полив у щоденнику';
+    var g = diffDays(parse(l.date), parse(logs[i - 1].date));
+    return g === 0 ? 'того ж дня, що й попередній полив' : 'через ' + g + ' ' + plural(g, 'день', 'дні', 'днів') + ' після попереднього поливу';
+  }
   function galStep(d) {
     if (!ui.sheet || ui.sheet.type !== 'gallery' || ui.galIdx === null) return;
     var n = photosOf(findAny(ui.sheet.id)).length, next = ui.galIdx + d;
@@ -1047,6 +1054,8 @@
     dreamForm.hidden = !(type === 'dream-add' || type === 'dream-edit');
     stepSheet.hidden = type !== 'step';
     sheetEl.classList.toggle('wide', type === 'gallery');
+    sheetEl.classList.toggle('cinema', type === 'gallery');
+    overlay.classList.toggle('cinema', type === 'gallery');
     sheetEl.classList.toggle('side', type === 'step');
     overlay.classList.toggle('side', type === 'step');
     var first = null;
@@ -1088,6 +1097,7 @@
     } else {
       var g = findAny(id);
       sheetHead(I_IMAGE, 'Фото', g.name);
+      ui.galIdx = photosOf(g).length ? 0 : null;
       renderGallery();
       first = overlay.querySelector('[data-action="close"]');
     }
@@ -1544,36 +1554,36 @@
     dSubmit.textContent = d ? 'Зберегти' : 'Додати мрію';
   }
 
+  // steps work like a to-do list: tap the circle to finish, tap the row for details, add at the bottom,
+  // finished ones fold away under "Виконані"
+  function stepRow(st, done) {
+    var subs = st.s || [], sd = subs.filter(function (x) { return x.d; }).length;
+    var meta = [];
+    if (subs.length) meta.push('<span class="sm-i">' + CHECK + sd + ' з ' + subs.length + '</span>');
+    if (st.n) meta.push('<span class="sm-i">' + I_NOTE + 'нотатка</span>');
+    return '<li class="step td' + (done ? ' is-done' : '') + '" data-sid="' + esc(st.id) + '">' +
+      (done ? '' : '<span class="grip" data-grip aria-hidden="true">' + I_GRIP + '</span>') +
+      '<button type="button" class="check" role="checkbox" aria-checked="' + !!st.d + '" data-action="step-toggle" data-step="' + esc(st.id) + '" aria-label="' + (done ? 'Повернути: ' : 'Виконано: ') + esc(st.t) + '">' + CHECK + '</button>' +
+      '<button type="button" class="td-main" data-action="step-edit" data-step="' + esc(st.id) + '"><span class="td-title">' + esc(st.t) + '</span>' +
+      (meta.length ? '<span class="td-meta">' + meta.join('<i class="dot-sep"></i>') + '</span>' : '') + '</button>' +
+      '<button type="button" class="td-x" data-action="step-del" data-step="' + esc(st.id) + '" aria-label="Прибрати">' + (ui.confirm === 'step:' + st.id ? '<span>Точно?</span>' : I_X) + '</button>' +
+      '</li>';
+  }
   function stepsHtml(d) {
     var n = d.steps.length, k = stepsDone(d);
-    // open steps first in the order they were added, finished ones go to the bottom
-    var ordered = d.steps.filter(function (s) { return !s.d; }).concat(d.steps.filter(function (s) { return s.d; }));
-    var html = '<div class="dream-steps"><div class="dsec-head"><h3>Кроки</h3>' + (n ? '<span class="meta">виконано ' + k + ' з ' + n + '</span>' : '') + '</div>';
+    var open = d.steps.filter(function (s) { return !s.d; }), done = d.steps.filter(function (s) { return s.d; });
+    var html = '<div class="dream-steps"><div class="dsec-head"><h3>Кроки</h3>' + (n ? '<span class="td-count">' + k + ' / ' + n + '</span>' : '') + '</div>';
     if (n) html += '<div class="bar" aria-hidden="true"><i style="width:' + Math.round(k / n * 100) + '%"></i></div>';
-    html += '<form id="step-form" class="step-add"><input type="text" id="step-input" maxlength="140" placeholder="Новий крок" autocomplete="off" aria-label="Новий крок">' +
-      '<button type="submit" class="secondary">Додати</button></form>';
-    html += '<ul class="steps" id="steps-list">' + ordered.map(function (st) {
-      var subs = st.s || [], key = 'step:' + st.id;
-      var row = '<div class="step-row">' +
-        (st.d ? '<span class="grip off"></span>' : '<span class="grip" data-grip aria-hidden="true">' + I_GRIP + '</span>') +
-        '<button type="button" class="check" role="checkbox" aria-checked="' + !!st.d + '" data-action="step-toggle" data-step="' + esc(st.id) + '" aria-label="' + esc(st.t) + '">' + CHECK + '</button>' +
-        '<button type="button" class="step-t" data-action="step-edit" data-step="' + esc(st.id) + '">' + esc(st.t) + '</button>' +
-        '<button type="button" class="ico" data-action="step-edit" data-step="' + esc(st.id) + '" aria-label="Редагувати">' + I_EDIT + '</button>' +
-        (ui.confirm === key
-          ? '<button type="button" class="ico sure" data-action="step-del" data-step="' + esc(st.id) + '">Видалити?</button>'
-          : '<button type="button" class="ico" data-action="step-del" data-step="' + esc(st.id) + '" aria-label="Прибрати">' + I_X + '</button>') +
-        '</div>';
-      var body = '';
-      if (st.n || subs.length) {
-        var sd = subs.filter(function (x) { return x.d; }).length;
-        body = '<button type="button" class="step-sub" data-action="step-edit" data-step="' + esc(st.id) + '">' +
-          (subs.length ? '<span>' + sd + ' з ' + subs.length + ' ' + plural(subs.length, 'підкроку', 'підкроків', 'підкроків') + '</span>' : '') +
-          (st.n ? '<span class="n">' + esc(st.n) + '</span>' : '') + '</button>';
-      }
-      return '<li class="step' + (st.d ? ' is-done' : '') + '" data-sid="' + esc(st.id) + '">' + row + body + '</li>';
-    }).join('') + '</ul>';
+    html += '<ul class="steps td-list" id="steps-list">' + open.map(function (st) { return stepRow(st, false); }).join('') + '</ul>';
+    html += '<form id="step-form" class="td-new"><span class="td-plus">' + I_PLUS + '</span><input type="text" id="step-input" maxlength="140" placeholder="Додати крок" autocomplete="off" enterkeyhint="done" aria-label="Додати крок">' +
+      '<button type="submit" class="td-go" aria-label="Додати">' + CHECK + '</button></form>';
+    if (done.length) {
+      html += '<button type="button" class="td-done-toggle" data-action="steps-done-toggle" aria-expanded="' + !!dv.showDone + '">' + I_NEXT + '<span>Виконані</span><b>' + done.length + '</b></button>';
+      if (dv.showDone) html += '<ul class="steps td-list done">' + done.map(function (st) { return stepRow(st, true); }).join('') + '</ul>';
+    }
     return html + '</div>';
   }
+
 
   function noteHtml(d) {
     var note = dv.note === 'new' ? null : findFile(d, dv.note);
@@ -1909,9 +1919,18 @@
         run(function () { return saveSteps(d, nx); });
         return true;
       }
+      case 'steps-done-toggle': dv.showDone = !dv.showDone; renderDreamDetail(); return true;
       case 'step-toggle':
       case 'step-del':
         var sid = el.getAttribute('data-step');
+        // finishing from the list: the circle fills, the row slides away, then it is saved
+        var row = el.closest('.td');
+        if (act === 'step-toggle' && row && !row.classList.contains('is-done') && !reduceMotion) {
+          if (row.classList.contains('completing')) return true;
+          row.classList.add('completing');
+          setTimeout(function () { var dd = curDream(); if (dd) run(function () { return saveSteps(dd, dd.steps.map(function (s) { return s.id === sid ? { id: s.id, t: s.t, d: true, n: s.n, s: s.s || [] } : s; })); }); }, 380);
+          return true;
+        }
         if (act === 'step-del' && ui.confirm !== 'step:' + sid) { ui.confirm = 'step:' + sid; renderDreamDetail(); return true; }
         if (act === 'step-del' && ui.sheet && ui.sheet.type === 'step') closeSheet();
         ui.confirm = null;
