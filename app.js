@@ -303,27 +303,35 @@
   }
 
   /* ---------- trash page ---------- */
-  function trashHtml() {
-    var head = '<div class="section-head"><h2>Корзина</h2><button type="button" class="link-btn" data-action="trash-back">← Назад</button></div>';
-    if (!state.trash.length) return head + '<div style="height:12px"></div><div class="empty">Корзина порожня.</div>';
+  // one look for both bins: a header with a badge, cards with a ring that shows how much time is left
+  function trashPage(items, emptyIcon) {
+    var head = '<div class="trash-head"><button type="button" class="dback" data-action="trash-back" aria-label="Назад">' + I_BACK + '</button>' +
+      '<span class="trash-badge">' + hexBadge(I_TRASH, 'trash-hex') + '</span>' +
+      '<div class="sec-text"><h2>Корзина</h2><p class="summary">' + (items.length ? 'Усе тут зникне само через 2 дні' : '') + '</p></div></div>';
+    if (!items.length) return head + '<div class="trash-empty">' + hexBadge(I_TRASH, 'te-hex') + '<strong>Порожньо</strong><span>Видалене лежатиме тут 2 дні</span></div>';
     var now = Date.now();
-    var items = state.trash.slice().sort(function (a, b) { return b.deletedAt - a.deletedAt; }).map(function (t) {
-      var hrs = Math.max(1, Math.ceil((TRASH_MS - (now - t.deletedAt)) / 3600000));
-      var d = Math.floor(hrs / 24), h = hrs % 24;
-      var left = ((d ? d + ' дн. ' : '') + (h ? h + ' год' : '')).trim();
-      var key = 'trash:' + t.plant.id;
-      var pics = photosOf(t.plant);
-      return '<li class="trash-item">' +
-        '<button type="button" class="trash-thumb" data-action="gallery" data-id="' + t.plant.id + '" aria-label="Фото: ' + esc(t.plant.name) + '">' +
-          (pics.length ? '<img loading="lazy" decoding="async" src="' + esc(pics[0].photo) + '" alt="">' : LEAF) + '</button>' +
-        '<div class="trash-text"><strong>' + esc(t.plant.name) + '</strong>' +
-        '<p class="meta">Зникне остаточно через ' + left + ' · записів: ' + t.plant.logs.length + '</p>' +
-        (pics.length ? '<button type="button" class="link-btn" data-action="gallery" data-id="' + t.plant.id + '" style="padding-left:0">Усі фото (' + pics.length + ')</button>' : '') + '</div>' +
-        '<div class="trash-actions"><button type="button" class="secondary" data-action="restore" data-id="' + t.plant.id + '">Відновити</button></div></li>';
-    }).join('');
-    return head +
-      '<ul class="log-list">' + items + '</ul>';
+    return head + '<div class="tgrid">' + items.map(function (t, i) {
+      var leftMs = Math.max(0, TRASH_MS - (now - t.deletedAt));
+      var hrs = Math.max(1, Math.ceil(leftMs / 3600000));
+      var left = hrs >= 24 ? Math.floor(hrs / 24) + ' д ' + (hrs % 24 ? hrs % 24 + ' г' : '') : hrs + ' год';
+      var pct = Math.round(leftMs / TRASH_MS * 100);
+      var photo = t.photo ? '<img loading="lazy" decoding="async" src="' + esc(t.photo) + '" alt="">' : hexBadge(emptyIcon, 'tc-hex');
+      return '<article class="tcard" style="--i:' + i + '">' +
+        (t.open ? '<button type="button" class="tc-photo" data-action="' + t.open + '" data-id="' + t.id + '" aria-label="Фото: ' + esc(t.title) + '">' + photo + '</button>' : '<div class="tc-photo">' + photo + '</div>') +
+        '<div class="tc-ring' + (hrs <= 12 ? ' soon' : '') + '" style="--p:' + pct + '" title="Зникне через ' + left.trim() + '"><span>' + esc(left.trim()) + '</span></div>' +
+        '<div class="tc-body"><strong>' + esc(t.title) + '</strong>' + (t.sub ? '<span class="meta">' + esc(t.sub) + '</span>' : '') +
+        '<button type="button" class="tc-restore" data-action="' + t.restore + '" data-id="' + t.id + '">' + I_RESTORE + 'Відновити</button></div></article>';
+    }).join('') + '</div>';
   }
+  function trashHtml() {
+    return trashPage(state.trash.slice().sort(function (a, b) { return b.deletedAt - a.deletedAt; }).map(function (t) {
+      var pics = photosOf(t.plant);
+      return { id: t.plant.id, title: t.plant.name, photo: pics.length ? pics[0].photo : null, deletedAt: t.deletedAt,
+        sub: t.plant.logs.length + ' ' + plural(t.plant.logs.length, 'запис', 'записи', 'записів') + (pics.length ? ' · ' + pics.length + ' фото' : ''),
+        open: pics.length ? 'gallery' : null, restore: 'restore' };
+    }), ICON_PLANT);
+  }
+
 
   /* ---------- diary tab: statistics ---------- */
   var RANGES = [{ v: 30, t: '30 днів' }, { v: 90, t: '90 днів' }, { v: 365, t: 'Рік' }, { v: 0, t: 'Усе' }];
@@ -512,7 +520,7 @@
         var asking = ui.confirm === key;
         return '<li class="log"><div class="lthumb">' + (x.l.photo ? '<img loading="lazy" decoding="async" src="' + esc(x.l.photo) + '" alt="Фото поливу">' : DROP) + '</div>' +
           '<div><div class="row"><h3>' + esc(x.p.name) + '</h3>' +
-          '<button type="button" class="link-btn" data-action="del-log" data-plant="' + x.p.id + '" data-log="' + x.l.id + '">' + (asking ? 'Підтвердити' : 'Видалити') + '</button></div>' +
+          '<button type="button" class="ibtn del sm' + (asking ? ' sure' : '') + '" data-action="del-log" data-plant="' + x.p.id + '" data-log="' + x.l.id + '" aria-label="Видалити запис">' + I_TRASH + (asking ? '<span>Точно?</span>' : '') + '</button></div>' +
           '<p class="when">' + esc(fmtDate(x.l.date)) + '</p>' +
           '</div></li>';
       }).join('') + '</ul>';
@@ -524,7 +532,6 @@
   /* ---------- home: the list of sections ---------- */
   var plantsScreen = document.getElementById('plants-screen');
   var homeEl = document.getElementById('home');
-  var homeBtn = document.getElementById('home-btn');
   var trashBtn = document.getElementById('trash-btn');
   var ICON_PLANT = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 21v-9"/><path d="M12 13c-5 0-8-3-8-8 5 0 8 3 8 8z"/><path d="M12 16c0-4 2-6 7-6 0 4-2 6-7 6z"/></svg>';
   var ICON_ANT = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="6" cy="14" r="2.5"/><circle cx="12" cy="13" r="2"/><circle cx="17.5" cy="11" r="2.5"/><path d="M6 12l-2-4M12 11l-1-4M17.5 8.5L16 5M19.5 9l2-2M4 16l-2 3M7 16l1 4M12 15l2 5M17 13.5l3 5"/></svg>';
@@ -557,10 +564,33 @@
 
   var wheelBuilt = false;
   // the flower: hexagon badges in a ring around a round emblem
-  var RING = [
-    { a: 0, id: 'plants' }, { a: 45, id: 'dreams' }, { a: 90, id: 'piano' }, { a: 135, id: 'ants' },
-    { a: 180 }, { a: 225 }, { a: 270 }, { a: 315 }
-  ];
+  // the order of the eight places (sections and empty "soon" places); the same for the flower and the list
+  var ORDER_KEY = 'dydossa-life-home-order';
+  var DEFAULT_ORDER = ['plants', 'dreams', 'piano', 'ants', 'e1', 'e2', 'e3', 'e4'];
+  var homeOrder = DEFAULT_ORDER.slice();
+  try {
+    var savedOrder = JSON.parse(localStorage.getItem(ORDER_KEY) || 'null');
+    if (Array.isArray(savedOrder) && savedOrder.length === 8 && DEFAULT_ORDER.every(function (x) { return savedOrder.indexOf(x) !== -1; })) homeOrder = savedOrder;
+  } catch (e) {}
+  function saveOrder() { try { localStorage.setItem(ORDER_KEY, JSON.stringify(homeOrder)); } catch (e) {} }
+  function secById(id) { return SECTIONS.filter(function (x) { return x.id === id; })[0] || null; }
+  var homeEditing = false;
+  function slotXY(n) { return wp(282, n * 45); }
+  // put every badge (and the arc on the emblem that faces it) where its place in the order says
+  function layoutWheel() {
+    var svg = document.querySelector('.hexring');
+    if (!svg) return;
+    homeOrder.forEach(function (id, n) {
+      var g = svg.querySelector('.hx[data-slot="' + id + '"]');
+      if (!g) return;
+      var c = slotXY(n), dir = wp(16, n * 45);
+      g.style.transform = 'translate(' + f1(c[0]) + 'px, ' + f1(c[1]) + 'px)';
+      g.style.setProperty('--dx', f1(dir[0]) + 'px'); g.style.setProperty('--dy', f1(dir[1]) + 'px');
+      g.style.setProperty('--i', n);
+      var arc = svg.querySelector('.e-arc.arc-' + id);
+      if (arc) { var a0 = wp(158, n * 45 - 16), a1 = wp(158, n * 45 + 16); arc.setAttribute('d', 'M' + f1(a0[0]) + ' ' + f1(a0[1]) + ' A158 158 0 0 1 ' + f1(a1[0]) + ' ' + f1(a1[1])); }
+    });
+  }
   function buildWheel() {
     var out = '<svg class="wheel hexring intro" viewBox="-420 -420 840 840" role="group" aria-label="Розділи">' +
       '<defs><filter id="grunge" x="-10%" y="-10%" width="120%" height="120%">' +
@@ -571,15 +601,14 @@
       '<clipPath id="ctop"><rect x="-150" y="-150" width="300" height="150"/></clipPath>' +
       '<clipPath id="cbot"><rect x="-150" y="0" width="300" height="150"/></clipPath></defs>';
     var arcs = '';
-    RING.forEach(function (w, n) {
-      var sec = SECTIONS.filter(function (x) { return x.id === w.id; })[0];
-      var ready = !!(sec && sec.ready), c = wp(282, w.a);
+    homeOrder.forEach(function (slot, n) {
+      var sec = secById(slot);
+      var ready = !!(sec && sec.ready);
       var cls = 'hx petal' + (sec ? ' s-' + sec.id : '') + (ready ? ' ready' : sec ? ' soon' : ' empty');
       var attrs = sec
         ? ' data-action="petal" data-section="' + sec.id + '" data-title="' + esc(sec.title) + '" role="button" tabindex="0" aria-label="' + esc(sec.title) + (ready ? '' : ', скоро') + '"'
         : ' aria-hidden="true"';
-      var dir = wp(16, w.a);
-      out += '<g class="' + cls + '"' + attrs + ' transform="translate(' + f1(c[0]) + ' ' + f1(c[1]) + ')" style="--i:' + n + ';--dx:' + f1(dir[0]) + 'px;--dy:' + f1(dir[1]) + 'px">' +
+      out += '<g class="' + cls + '" data-slot="' + slot + '"' + attrs + '>' +
         '<g class="hx-float"><g class="hx-move"><g class="hx-in">' +
         '<circle class="hx-ripple" r="106"/>' +
         '<polygon class="hx-hit" points="' + hexPoints(110) + '"/>' +
@@ -588,15 +617,12 @@
         out += '<polygon class="hx-fill" points="' + hexPoints(86) + '"/>' +
           '<g class="hx-icon-w"><g class="hx-icon" transform="translate(-34 -34) scale(2.85)" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">' + inner(sec.icon) + '</g></g>' +
           '<text class="hx-name" y="58" text-anchor="middle">' + esc(sec.title) + '</text>' +
-          (w.id === 'plants' ? '<g class="p-dot" hidden><circle class="p-dot-halo" cx="80" cy="-72" r="19"/><circle cx="80" cy="-72" r="12"/></g>' : '');
+          (slot === 'plants' ? '<g class="p-dot" hidden><circle class="p-dot-halo" cx="80" cy="-72" r="19"/><circle cx="80" cy="-72" r="12"/></g>' : '');
       } else {
         out += '<text class="hx-soon" y="7" text-anchor="middle">soon…</text>';
       }
       out += '</g></g></g></g>';
-      if (sec) {
-        var a0 = wp(158, w.a - 16), a1 = wp(158, w.a + 16);
-        arcs += '<path class="e-arc arc-' + sec.id + (ready ? '' : ' soon') + '" d="M' + f1(a0[0]) + ' ' + f1(a0[1]) + ' A158 158 0 0 1 ' + f1(a1[0]) + ' ' + f1(a1[1]) + '"/>';
-      }
+      if (sec) arcs += '<path class="e-arc arc-' + sec.id + (ready ? '' : ' soon') + '"/>';
     });
     out += '<g class="e-arcs">' + arcs + '</g>';
     // the emblem: a two-tone disc with the sprout cut out of it
@@ -607,6 +633,7 @@
       '<div class="emb-sprout" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">' + inner(ICON_PLANT) + '</svg></div>';
     document.getElementById('wheel').innerHTML = out;
     wheelBuilt = true;
+    layoutWheel();
     var svg = document.querySelector('.wheel');
     setTimeout(function () { svg.classList.remove('intro'); }, 2000);
   }
@@ -650,13 +677,15 @@
   }
   var listBuilt = false;
   function buildList() {
-    var items = SECTIONS.map(function (sec) { return sec; }).concat([null, null, null, null]);
+    listEl.classList.remove('launch');
+    var items = homeOrder.map(function (slot) { return { slot: slot, sec: secById(slot) }; });
     listEl.innerHTML = '<div class="hl-preview" id="hl-preview"></div>' +
       '<ul class="hl-items">' +
       '<li class="hl-head" style="--i:0">' + hubSvg('hl-hub') + '<strong>dydossa life</strong></li>' +
-      items.map(function (sec, n) {
-        if (!sec) return '<li style="--i:' + (n + 1) + '"><div class="hl-item empty">' + hexSvg(null, 'hl-hex') + '<span class="hl-name">soon…</span></div></li>';
-        return '<li style="--i:' + (n + 1) + '"><button type="button" class="hl-item s-' + sec.id + (sec.ready ? ' ready' : ' soon') + '" data-action="petal" data-section="' + sec.id + '">' +
+      items.map(function (it, n) {
+        var sec = it.sec;
+        if (!sec) return '<li class="hl-row" data-slot="' + it.slot + '" style="--i:' + (n + 1) + '"><div class="hl-item empty">' + hexSvg(null, 'hl-hex') + '<span class="hl-name">soon…</span></div></li>';
+        return '<li class="hl-row" data-slot="' + it.slot + '" style="--i:' + (n + 1) + '"><button type="button" class="hl-item s-' + sec.id + (sec.ready ? ' ready' : ' soon') + '" data-action="petal" data-section="' + sec.id + '">' +
           hexSvg(sec, 'hl-hex') + '<span class="hl-name">' + esc(sec.title) + '</span>' +
           (sec.id === 'plants' ? '<span class="hl-dot" hidden></span>' : '') + '</button></li>';
       }).join('') + '</ul>';
@@ -696,8 +725,98 @@
     }, reduceMotion ? 0 : 260);
   }
 
+  /* change the order: a faint button turns on edit mode; then badges / rows can be dragged */
+  var editBtn = document.getElementById('home-edit');
+  function paintEditBtn() {
+    editBtn.innerHTML = homeEditing ? CHECK + '<span>Готово</span>' : I_MOVE;
+    editBtn.setAttribute('aria-pressed', homeEditing ? 'true' : 'false');
+    editBtn.setAttribute('aria-label', homeEditing ? 'Готово' : 'Змінити порядок розділів');
+  }
+  function setEditing(on) {
+    homeEditing = on;
+    homeEl.classList.toggle('editing', on);
+    paintEditBtn();
+    if (!on) { listBuilt = false; if (homeView === 'list') { buildList(); renderHome(); } }
+  }
+  (function () {
+    var drag = null;
+    function svgPoint(svg, e) { var pt = svg.createSVGPoint(); pt.x = e.clientX; pt.y = e.clientY; return pt.matrixTransform(svg.getScreenCTM().inverse()); }
+    function nearestSlot(x, y) {
+      var best = 0, bd = Infinity;
+      for (var n = 0; n < 8; n++) { var c = slotXY(n), d = (c[0] - x) * (c[0] - x) + (c[1] - y) * (c[1] - y); if (d < bd) { bd = d; best = n; } }
+      return best;
+    }
+    document.addEventListener('pointerdown', function (e) {
+      if (!homeEditing || ui.screen !== 'home') return;
+      var g = e.target.closest && e.target.closest('.hexring .hx');
+      var row = e.target.closest && e.target.closest('.hl-row');
+      if (g) {
+        e.preventDefault();
+        var svg = g.ownerSVGElement;
+        g.parentNode.appendChild(g);
+        g.classList.add('dragging');
+        drag = { kind: 'wheel', el: g, svg: svg, from: homeOrder.indexOf(g.getAttribute('data-slot')), target: null };
+        try { svg.setPointerCapture(e.pointerId); } catch (x) {}
+      } else if (row) {
+        e.preventDefault();
+        var rows = [].slice.call(listEl.querySelectorAll('.hl-row'));
+        drag = { kind: 'list', el: row, rows: rows, from: rows.indexOf(row), y0: e.clientY, h: row.getBoundingClientRect().height + 4, to: rows.indexOf(row) };
+        row.classList.add('dragging');
+      }
+    });
+    document.addEventListener('pointermove', function (e) {
+      if (!drag) return;
+      if (drag.kind === 'wheel') {
+        var p = svgPoint(drag.svg, e);
+        drag.el.style.transform = 'translate(' + f1(p.x) + 'px, ' + f1(p.y) + 'px)';
+        var n = nearestSlot(p.x, p.y);
+        if (n !== drag.target) {
+          drag.svg.querySelectorAll('.hx.drop-target').forEach(function (x) { x.classList.remove('drop-target'); });
+          var t = drag.svg.querySelector('.hx[data-slot="' + homeOrder[n] + '"]');
+          if (t && t !== drag.el) t.classList.add('drop-target');
+          drag.target = n;
+        }
+      } else {
+        var dy = e.clientY - drag.y0;
+        drag.el.style.transform = 'translateY(' + dy + 'px)';
+        var to = Math.max(0, Math.min(drag.rows.length - 1, drag.from + Math.round(dy / drag.h)));
+        drag.to = to;
+        drag.rows.forEach(function (r, i) {
+          if (r === drag.el) return;
+          var shift = (drag.from < to && i > drag.from && i <= to) ? -drag.h : (drag.from > to && i < drag.from && i >= to) ? drag.h : 0;
+          r.style.transform = shift ? 'translateY(' + shift + 'px)' : '';
+        });
+      }
+    });
+    function end() {
+      if (!drag) return;
+      var d = drag; drag = null;
+      if (d.kind === 'wheel') {
+        d.el.classList.remove('dragging');
+        d.svg.querySelectorAll('.hx.drop-target').forEach(function (x) { x.classList.remove('drop-target'); });
+        if (d.target !== null && d.target !== d.from) {
+          var tmp = homeOrder[d.target]; homeOrder[d.target] = homeOrder[d.from]; homeOrder[d.from] = tmp;
+          saveOrder(); listBuilt = false;
+        }
+        layoutWheel();
+      } else {
+        d.el.classList.remove('dragging');
+        if (d.to !== d.from) {
+          var moved = homeOrder.splice(d.from, 1)[0];
+          homeOrder.splice(d.to, 0, moved);
+          saveOrder();
+          var svgW = document.querySelector('.hexring'); if (svgW) layoutWheel();
+        }
+        buildList(); renderHome();
+      }
+    }
+    document.addEventListener('pointerup', end);
+    document.addEventListener('pointercancel', end);
+  })();
+
   function renderHome() {
     paintViewBtn();
+    paintEditBtn();
     var due = ui.loaded && state.plants.some(function (p) { return status(p).due; });
     if (homeView === 'wheel') {
       if (!wheelBuilt) buildWheel();
@@ -737,18 +856,32 @@
     var el = [homeEl, plantsScreen, dreamsScreen].filter(function (x) { return !x.hidden; })[0];
     if (el) { el.classList.remove('page-in'); void el.offsetWidth; el.classList.add('page-in'); }
   }
+  var morphHex = null;
   function openSection(id) {
     ui.screen = id; ui.tab = 'plants'; ui.dreamTab = 'list'; ui.dreamId = null; ui.confirm = null;
     var scr = document.getElementById(id + '-screen');
+    var morph = morphHex === id; morphHex = null;
     go(function () {
-      if (scr && !reduceMotion) { scr.classList.remove('entering'); void scr.offsetWidth; scr.classList.add('entering'); setTimeout(function () { scr.classList.remove('entering'); }, 1600); }
+      if (scr && !reduceMotion) { scr.classList.remove('entering'); scr.classList.toggle('morph', morph); void scr.offsetWidth; scr.classList.add('entering'); setTimeout(function () { scr.classList.remove('entering'); scr.classList.remove('morph'); }, 1600); }
       render(); window.scrollTo(0, 0);
+      if (morph) vtName(document.getElementById(id + '-hex'), 'sechex');
+    }, function () {
+      listEl.classList.remove('launch');
+      listEl.querySelectorAll('.picked').forEach(function (x) { x.classList.remove('picked'); });
     });
   }
   // a tap: the branch lights up, a ripple runs over the icon, then the section opens
   function petalTap(el) {
+    if (homeEditing) return;
     if (el.classList.contains('tap')) return;
     var ready = el.classList.contains('ready');
+    if (ready && el.classList.contains('hl-item')) {
+      var li = el.closest('li');
+      listEl.classList.add('launch');
+      if (li) li.classList.add('picked');
+      vtName(el.querySelector('.hl-hex'), 'sechex');
+      morphHex = el.getAttribute('data-section');
+    }
     el.classList.remove('nope');
     void el.getBoundingClientRect();
     el.classList.add(ready ? 'tap' : 'nope');
@@ -768,7 +901,6 @@
     paintTheme(document.body, cd);
     plantsScreen.hidden = ui.screen !== 'plants';
     dreamsScreen.hidden = ui.screen !== 'dreams';
-    homeBtn.hidden = home;
     trashBtn.hidden = home;
     viewBtn.hidden = !home;
   }
@@ -781,11 +913,13 @@
       tc0.textContent = state.dreamTrash.length;
       tc0.hidden = !state.dreamTrash.length;
       trashBtn.setAttribute('aria-pressed', ui.dreamTab === 'trash' ? 'true' : 'false');
-      document.getElementById('dreams-hero').hidden = !!ui.dreamId && ui.dreamTab !== 'trash';
+      document.getElementById('dreams-hero').hidden = !!ui.dreamId || ui.dreamTab === 'trash';
       if (ui.dreamId && ui.dreamTab !== 'trash') renderDreamPage(); else renderDreams();
       return;
     }
     renderSummary();
+    document.getElementById('plants-hero').hidden = ui.tab === 'trash';
+    document.querySelector('#plants-screen .tabs').hidden = ui.tab === 'trash';
     document.querySelectorAll('.tab').forEach(function (b) {
       b.setAttribute('aria-selected', b.getAttribute('data-tab') === ui.tab ? 'true' : 'false');
     });
@@ -831,23 +965,55 @@
     var p = findAny(ui.sheet.id);
     var photos = photosOf(p);
     if (!photos.length) {
-      galleryEl.innerHTML = '<div class="empty">Фото ще немає. Додайте його, коли записуватимете полив.</div>';
+      galleryEl.innerHTML = '<div class="trash-empty">' + hexBadge(I_IMAGE, 'te-hex') + '<strong>Фото ще немає</strong><span>Додай його, коли записуватимеш полив</span></div>';
       return;
     }
     if (ui.galIdx !== null && photos[ui.galIdx]) {
-      var l = photos[ui.galIdx];
-      galleryEl.innerHTML = '<div class="gal-frame"><img class="gal-big" src="' + esc(l.photo) + '" alt="Фото від ' + esc(fmtDate(l.date)) + '">' +
-        '<div class="gal-date">' + esc(fmtDate(l.date)) + '</div></div>' +
-        '<div class="gal-nav"><button type="button" class="secondary" data-action="gal-back">Усі фото</button>' +
-        '<span class="gal-count">' + (ui.galIdx + 1) + ' з ' + photos.length + '</span>' +
-        '<span><button type="button" class="secondary" data-action="gal-step" data-d="-1"' + (ui.galIdx === 0 ? ' disabled' : '') + ' aria-label="Попереднє фото">←</button> ' +
-        '<button type="button" class="secondary" data-action="gal-step" data-d="1"' + (ui.galIdx === photos.length - 1 ? ' disabled' : '') + ' aria-label="Наступне фото">→</button></span></div>';
+      var l = photos[ui.galIdx], i0 = ui.galIdx, dir = ui.galDir || 0;
+      galleryEl.innerHTML = '<div class="gv">' +
+        '<div class="gv-stage" id="gv-stage">' +
+          '<img class="gv-bg" src="' + esc(l.photo) + '" alt="" aria-hidden="true">' +
+          '<img class="gv-img' + (dir > 0 ? ' from-r' : dir < 0 ? ' from-l' : '') + '" src="' + esc(l.photo) + '" alt="Фото від ' + esc(fmtDate(l.date)) + '">' +
+          '<button type="button" class="gv-nav prev" data-action="gal-step" data-d="-1"' + (i0 === 0 ? ' disabled' : '') + ' aria-label="Попереднє фото">' + I_BACK + '</button>' +
+          '<button type="button" class="gv-nav next" data-action="gal-step" data-d="1"' + (i0 === photos.length - 1 ? ' disabled' : '') + ' aria-label="Наступне фото">' + I_NEXT + '</button>' +
+          '<span class="gv-chip gv-date">' + esc(fmtDate(l.date)) + '</span>' +
+          '<span class="gv-chip gv-count">' + (i0 + 1) + ' / ' + photos.length + '</span>' +
+        '</div>' +
+        '<div class="gv-bar"><button type="button" class="gv-all" data-action="gal-back">' + I_GRID + '<span>Усі фото</span></button>' +
+        '<div class="gv-strip" id="gv-strip">' + photos.map(function (x, i) {
+          return '<button type="button" class="gv-th"' + (i === i0 ? ' aria-current="true"' : '') + ' data-action="gal-open" data-i="' + i + '" aria-label="Фото від ' + esc(fmtDate(x.date)) + '"><img loading="lazy" decoding="async" src="' + esc(x.photo) + '" alt=""></button>';
+        }).join('') + '</div></div></div>';
+      ui.galDir = 0;
+      var cur = galleryEl.querySelector('.gv-th[aria-current]');
+      if (cur && cur.scrollIntoView) cur.scrollIntoView({ block: 'nearest', inline: 'center' });
       return;
     }
     galleryEl.innerHTML = '<div class="gal-grid">' + photos.map(function (x, i) {
-      return '<button type="button" class="gal-item" data-action="gal-open" data-i="' + i + '" aria-label="Фото від ' + esc(fmtDate(x.date)) + '"><img loading="lazy" decoding="async" src="' + esc(x.photo) + '" alt=""><span class="gal-date">' + esc(fmtDate(x.date)) + '</span></button>';
+      return '<button type="button" class="gal-item" style="--i:' + i + '" data-action="gal-open" data-i="' + i + '" aria-label="Фото від ' + esc(fmtDate(x.date)) + '"><img loading="lazy" decoding="async" src="' + esc(x.photo) + '" alt=""><span class="gal-date">' + esc(fmtDate(x.date)) + '</span></button>';
     }).join('') + '</div>';
   }
+  // the viewer also listens to arrow keys and to swipes
+  function galStep(d) {
+    if (!ui.sheet || ui.sheet.type !== 'gallery' || ui.galIdx === null) return;
+    var n = photosOf(findAny(ui.sheet.id)).length, next = ui.galIdx + d;
+    if (next < 0 || next >= n) return;
+    ui.galDir = d; ui.galIdx = next; renderGallery();
+  }
+  document.addEventListener('keydown', function (e) {
+    if (!ui.sheet || ui.sheet.type !== 'gallery' || ui.galIdx === null) return;
+    if (e.key === 'ArrowLeft') { e.preventDefault(); galStep(-1); }
+    else if (e.key === 'ArrowRight') { e.preventDefault(); galStep(1); }
+  });
+  (function () {
+    var sx = null, sy = 0;
+    document.addEventListener('pointerdown', function (e) { if (e.target.closest && e.target.closest('#gv-stage') && !e.target.closest('button')) { sx = e.clientX; sy = e.clientY; } });
+    document.addEventListener('pointerup', function (e) {
+      if (sx === null) return;
+      var dx = e.clientX - sx, dy = e.clientY - sy; sx = null;
+      if (Math.abs(dx) > 45 && Math.abs(dx) > Math.abs(dy) * 1.3) galStep(dx < 0 ? 1 : -1);
+    });
+  })();
+
 
   function clearPhoto() {
     ui.photo = null;
@@ -859,6 +1025,18 @@
     wClear.hidden = true;
   }
 
+  function paintDayChips() {
+    var t = today();
+    document.querySelectorAll('#w-days .chip').forEach(function (c) {
+      var d = new Date(t); d.setDate(d.getDate() - Number(c.getAttribute('data-d')));
+      c.setAttribute('aria-pressed', iso(d) === wDate.value ? 'true' : 'false');
+    });
+  }
+  function sheetHead(icon, cap, name) {
+    var si = document.getElementById('sheet-icon');
+    if (si) si.innerHTML = hexBadge(icon, 'sheet-hex');
+    sheetTitle.innerHTML = (cap ? '<small>' + esc(cap) + '</small>' : '') + esc(name);
+  }
   function openSheet(type, id) {
     ui.sheet = { type: type, id: id || null };
     ui.confirm = null;
@@ -874,16 +1052,17 @@
     var first = null;
     if (type === 'water') {
       var p = findPlant(id);
-      sheetTitle.textContent = 'Полив: ' + p.name;
+      sheetHead(DROP, 'Полив', p.name);
       wDate.value = iso(today());
       wDate.max = iso(today());
+      paintDayChips();
       clearPhoto();
       wSubmit.disabled = false;
       wSubmit.textContent = 'Записати полив';
       first = wDate;
     } else if (type === 'edit') {
       var q = findPlant(id);
-      sheetTitle.textContent = 'Змінити рослину';
+      sheetHead(I_GEAR, 'Змінити', q.name);
       pName.value = q.name;
       pInterval.value = q.interval;
       pDelete.hidden = false;
@@ -891,24 +1070,24 @@
       pSubmit.disabled = false;
       first = pName;
     } else if (type === 'add') {
-      sheetTitle.textContent = 'Нова рослина';
+      sheetHead(ICON_PLANT, 'Додати', 'Нова рослина');
       pName.value = '';
       pInterval.value = 14;
       pDelete.hidden = true;
       pSubmit.disabled = false;
       first = pName;
     } else if (type === 'step') {
-      sheetTitle.textContent = 'Крок';
+      sheetHead(CHECK, '', 'Крок');
       renderStepSheet();
       first = overlay.querySelector('[data-action="close"]');
     } else if (type === 'dream-add' || type === 'dream-edit') {
       var dd = type === 'dream-edit' ? findDream(id) : null;
-      sheetTitle.textContent = dd ? 'Змінити мрію' : 'Нова мрія';
+      sheetHead(dd ? I_GEAR : STAR, dd ? 'Змінити' : 'Додати', dd ? dd.title : 'Нова мрія');
       fillDreamForm(dd);
       first = dTitle;
     } else {
       var g = findAny(id);
-      sheetTitle.textContent = 'Фото: ' + g.name;
+      sheetHead(I_IMAGE, 'Фото', g.name);
       renderGallery();
       first = overlay.querySelector('[data-action="close"]');
     }
@@ -1004,6 +1183,12 @@
   var I_GRIP = '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="9" cy="6" r="1.5"/><circle cx="15" cy="6" r="1.5"/><circle cx="9" cy="12" r="1.5"/><circle cx="15" cy="12" r="1.5"/><circle cx="9" cy="18" r="1.5"/><circle cx="15" cy="18" r="1.5"/></svg>';
   var I_PLUS = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>';
   var I_MORE = '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="5" cy="12" r="1.8"/><circle cx="12" cy="12" r="1.8"/><circle cx="19" cy="12" r="1.8"/></svg>';
+  var I_GEAR = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>';
+  var I_NEXT = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg>';
+  var I_RESTORE = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 12a8 8 0 1 0 2.4-5.7L4 8.7"/><path d="M4 4v4.7h4.7"/></svg>';
+  var I_IMAGE = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="10" r="1.8"/><path d="M21 16l-5-5-8 9"/></svg>';
+  var I_GRID = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="4" width="7" height="7" rx="1.5"/><rect x="13" y="4" width="7" height="7" rx="1.5"/><rect x="4" y="13" width="7" height="7" rx="1.5"/><rect x="13" y="13" width="7" height="7" rx="1.5"/></svg>';
+  var I_MOVE = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v18M3 12h18M12 3l-3 3M12 3l3 3M12 21l-3-3M12 21l3-3M3 12l3-3M3 12l3 3M21 12l-3-3M21 12l-3 3"/></svg>';
   var I_BACK = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 6l-6 6 6 6"/></svg>';
   var DSTATUS = { dream: 'Мрію', progress: 'В процесі', done: 'Здійснено' };
   // colour of a dream page: taken from the dream's photo
@@ -1261,18 +1446,14 @@
   }
 
   function dreamsTrashHtml() {
-    var head = '<div class="section-head"><h2>Корзина</h2><button type="button" class="link-btn" data-action="trash-back">← Назад</button></div><div style="height:12px"></div>';
-    if (!state.dreamTrash.length) return head + '<div class="empty">Корзина порожня.</div>';
-    var now = Date.now();
-    return head + '<ul class="log-list">' + state.dreamTrash.slice().sort(function (a, b) { return b.deletedAt - a.deletedAt; }).map(function (t) {
-      var hrs = Math.max(1, Math.ceil((TRASH_MS - (now - t.deletedAt)) / 3600000));
-      var dd = Math.floor(hrs / 24), hh = hrs % 24;
-      var left = ((dd ? dd + ' дн. ' : '') + (hh ? hh + ' год' : '')).trim();
-      return '<li class="trash-item"><span class="trash-thumb">' + (t.dream.photo ? '<img loading="lazy" decoding="async" src="' + esc(t.dream.photo) + '" alt="">' : STAR) + '</span>' +
-        '<div class="trash-text"><strong>' + esc(t.dream.title) + '</strong><p class="meta">Зникне через ' + left + '</p></div>' +
-        '<div class="trash-actions"><button type="button" class="secondary" data-action="dream-restore" data-id="' + t.dream.id + '">Відновити</button></div></li>';
-    }).join('') + '</ul>';
+    return trashPage(state.dreamTrash.slice().sort(function (a, b) { return b.deletedAt - a.deletedAt; }).map(function (t) {
+      var n = t.dream.steps.length, m = t.dream.files.filter(function (f) { return f.kind !== 'folder'; }).length;
+      return { id: t.dream.id, title: t.dream.title, photo: t.dream.photo, deletedAt: t.deletedAt,
+        sub: [n ? n + ' ' + plural(n, 'крок', 'кроки', 'кроків') : '', m ? m + ' ' + plural(m, 'матеріал', 'матеріали', 'матеріалів') : ''].filter(Boolean).join(' · '),
+        open: null, restore: 'dream-restore' };
+    }), STAR);
   }
+
 
   function renderDreams() {
     var total = state.dreams.length, done = state.dreams.filter(function (d) { return d.status === 'done'; }).length;
@@ -1417,12 +1598,12 @@
     if (here) {
       // inside a folder: a back button, the folder's name and size, and the add button
       var cnt = childrenOf(d, here.id).length;
-      html = '<div class="fhead"><button type="button" class="fback" data-action="m-folder" data-m="' + up + '" aria-label="Назад: ' + esc(upName) + '">' + I_BACK + '</button>' +
+      html = '<div class="fhead' + (dv.nav ? ' nav-' + dv.nav : '') + '"><button type="button" class="fback" data-action="m-folder" data-m="' + up + '" aria-label="Назад: ' + esc(upName) + '">' + I_BACK + '</button>' +
         '<span class="fhead-icon">' + I_FOLDER + '</span>' +
         '<div class="fhead-text"><h3>' + esc(here.name) + '</h3><span class="meta">' + (cnt ? cnt + ' ' + plural(cnt, 'елемент', 'елементи', 'елементів') : 'порожня') + ' · у «' + esc(upName) + '»</span></div>' +
         '<button type="button" class="add-btn" data-action="m-add" aria-expanded="' + dv.add + '">' + I_PLUS + 'Додати</button></div>';
     } else {
-      html = '<div class="dsec-head"><h3>Матеріали</h3>' +
+      html = '<div class="dsec-head' + (dv.nav ? ' nav-' + dv.nav : '') + '"><h3>Матеріали</h3>' +
         '<button type="button" class="add-btn" data-action="m-add" aria-expanded="' + dv.add + '">' + I_PLUS + 'Додати</button></div>';
     }
     if (dv.add) {
@@ -1442,7 +1623,7 @@
         '<span>' + (isTouch ? 'Натисни, щоб додати' : 'Натисни або перетягни файл сюди') + '</span></button>';
       return html;
     }
-    html += '<ul class="m-grid">' + items.map(function (f) {
+    html += '<ul class="m-grid' + (dv.nav ? ' nav-' + dv.nav : '') + '">' + items.map(function (f, ti) {
       var key = 'm:' + f.id;
       var url = f.path ? fileUrls[f.path] : null;
       var isImg = f.kind === 'file' && /^image\//.test(f.mime) && url;
@@ -1471,7 +1652,7 @@
         body = '<button type="button" class="m-open" data-action="' + (f.kind === 'folder' ? 'm-folder' : 'm-note') + '" data-m="' + f.id + '">' + pv + label + '</button>';
       }
       var open = dv.menu === f.id;
-      return '<li class="m-tile' + (open ? ' open' : '') + '">' + body +
+      return '<li class="m-tile' + (open ? ' open' : '') + '" style="--i:' + ti + '">' + body +
         '<button type="button" class="more" data-action="m-menu" data-m="' + f.id + '" aria-label="Дії" aria-expanded="' + open + '">' + I_MORE + '</button>' +
         (open ? '<div class="m-menu hexacts">' +
           (f.kind !== 'note' ? '<button type="button" class="hm-item" data-action="m-rename" data-m="' + f.id + '" style="--i:0">' + hexBadge(I_EDIT, 'hm-hex') + '<span>Назва</span></button>' : '') +
@@ -1522,7 +1703,9 @@
     var pct = d.status === 'done' ? 100 : (nSteps ? Math.round(k / nSteps * 100) : 0);
     var nextStep = d.steps.filter(function (x) { return !x.d; })[0];
     var html = '<div class="dpage">' +
-      '<button type="button" class="dback" data-action="dream-back">' + I_BACK + 'Усі мрії</button>' +
+      '<div class="dtop"><button type="button" class="dback" data-action="dream-back" aria-label="Усі мрії">' + I_BACK + '</button><span class="dtop-sp"></span>' +
+        '<button type="button" class="ibtn" data-action="dream-edit" data-id="' + d.id + '" aria-label="Змінити назву, фото" title="Змінити назву, фото">' + I_GEAR + '</button>' +
+        '<button type="button" class="ibtn del' + (ui.confirm === 'dream' ? ' sure' : '') + '" data-action="dream-delete" aria-label="Видалити мрію" title="Видалити мрію">' + I_TRASH + (ui.confirm === 'dream' ? '<span>У корзину?</span>' : '') + '</button></div>' +
       '<div class="dlayout"><aside class="dside">' +
       '<header class="dhero' + (d.photo ? ' has-photo' : '') + '"' + (vtPhotoId === d.id ? ' style="view-transition-name:dphoto" data-vt' : '') + '>' +
         (d.photo ? '<img loading="lazy" decoding="async" src="' + esc(d.photo) + '" alt="">' : '<span class="dhero-star">' + STAR + '</span>') +
@@ -1550,8 +1733,7 @@
     }
     html += '</aside><div class="dmain"><section class="dcard">' + stepsHtml(d) + '</section>';
     html += '<section class="dcard dropzone' + (dv.drag ? ' drag' : '') + '" id="materials">' + filesHtml(d) + '<div class="drop-cover">Відпусти файли, щоб додати</div></section></div></div>';
-    html += '<div class="actions dfoot"><button type="button" class="secondary" data-action="dream-edit" data-id="' + d.id + '">Змінити назву, фото</button>' +
-      '<button type="button" class="danger" data-action="dream-delete">' + (ui.confirm === 'dream' ? 'Так, у корзину на 2 дні' : 'Видалити мрію') + '</button></div></div>';
+    html += '</div>';
     // keep what is being typed if the page is redrawn while a form is open
     var keep = {};
     ['rename-input', 'note-title', 'note-body', 'step-title', 'step-note', 'sub-input'].forEach(function (key) {
@@ -1559,12 +1741,15 @@
     });
     var focusId = document.activeElement && dreamsView.contains(document.activeElement) ? document.activeElement.id : null;
     dreamsView.innerHTML = html;
+    dv.nav = null;
     Object.keys(keep).forEach(function (key) { var el = document.getElementById(key); if (el) el.value = keep[key]; });
     if (focusId) { var fe = document.getElementById(focusId); if (fe) fe.focus({ preventScroll: true }); }
     if (ui.sheet && ui.sheet.type === 'step') renderStepSheet();
   }
   var renderDreamDetail = renderDreamPage;
 
+  wDate.addEventListener('change', paintDayChips);
+  wDate.addEventListener('input', paintDayChips);
   dreamForm.addEventListener('submit', async function (e) {
     e.preventDefault();
     if (ui.busy || !ui.sheet) return;
@@ -1735,7 +1920,12 @@
           : d.steps.map(function (s) { return s.id === sid ? { id: s.id, t: s.t, d: !s.d, n: s.n, s: s.s || [] } : s; });
         run(function () { return saveSteps(d, next); });
         return true;
-      case 'm-folder': dv.folder = m || null; dv.inline = null; dv.add = false; dv.menu = null; ui.confirm = null; renderDreamDetail(); return true;
+      case 'm-folder': {
+        var deeper = !!m && (!dv.folder || (findFile(d, m) || {}).parent === dv.folder);
+        dv.nav = deeper ? 'in' : 'out';
+        dv.folder = m || null; dv.inline = null; dv.add = false; dv.menu = null; ui.confirm = null; renderDreamDetail();
+        return true;
+      }
       case 'm-note': dv.note = m; dv.add = false; ui.confirm = null; renderDreamDetail(); return true;
       case 'm-back': dv.note = null; ui.confirm = null; renderDreamDetail(); return true;
       case 'm-new-folder':
@@ -1865,9 +2055,12 @@
     else if (act === 'pick-cam') wCam.click();
     else if (act === 'pick-lib') wLib.click();
     else if (act === 'photo-clear') clearPhoto();
-    else if (act === 'gal-open') { ui.galIdx = Number(el.getAttribute('data-i')); renderGallery(); }
+    else if (act === 'gal-open') { var gi = Number(el.getAttribute('data-i')); ui.galDir = ui.galIdx === null ? 0 : (gi > ui.galIdx ? 1 : gi < ui.galIdx ? -1 : 0); ui.galIdx = gi; renderGallery(); }
     else if (act === 'gal-back') { ui.galIdx = null; renderGallery(); }
-    else if (act === 'gal-step') { ui.galIdx = ui.galIdx + Number(el.getAttribute('data-d')); renderGallery(); }
+    else if (act === 'gal-step') galStep(Number(el.getAttribute('data-d')));
+    else if (act === 'home-edit') setEditing(!homeEditing);
+    else if (act === 'int-step') { var iv = Math.max(1, Math.min(365, (parseInt(pInterval.value, 10) || 1) + Number(el.getAttribute('data-d')))); pInterval.value = iv; }
+    else if (act === 'w-day') { var wd = new Date(today()); wd.setDate(wd.getDate() - Number(el.getAttribute('data-d'))); wDate.value = iso(wd); paintDayChips(); }
     else if (act === 'stat-toggle') {
       var cur = selectedIds();
       var at = cur.indexOf(id);
