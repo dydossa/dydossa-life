@@ -578,3 +578,36 @@ body.on-dreams .grid { grid-template-columns: 1fr; }
 :root[data-theme="dark"] [data-dt="photo"] { --t: var(--td); }
 
 button.brand { border: 0; background: transparent; color: inherit; font: inherit; padding: 0; cursor: pointer; text-align: left; }
+
+/* home wheel */
+body.on-home { --bg: #ECEEF8; --surface: #FFFFFF; --surface-2: #E1E4F2; --ink: #1B1C33; --muted: #6A6D92; --line: #D3D7EA; --axis: #BCC0DA; --accent: #1B1C33; --accent-ink: #FFFFFF; --accent-soft: #E1E4F2; --accent-strong: #000000; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) body.on-home { --bg: #090916; --surface: #14142B; --surface-2: #1D1D3D; --ink: #EEF0FF; --muted: #8E91B8; --line: #2A2A52; --axis: #3A3A66; --accent: #EEF0FF; --accent-ink: #090916; --accent-soft: #1D1D3D; --accent-strong: #FFFFFF; } }
+:root[data-theme="dark"] body.on-home { --bg: #090916; --surface: #14142B; --surface-2: #1D1D3D; --ink: #EEF0FF; --muted: #8E91B8; --line: #2A2A52; --axis: #3A3A66; --accent: #EEF0FF; --accent-ink: #090916; --accent-soft: #1D1D3D; --accent-strong: #FFFFFF; }
+body.on-home { background-image: radial-gradient(ellipse at 50% 45%, color-mix(in srgb, var(--ink) 6%, var(--bg)) 0%, var(--bg) 65%); background-attachment: fixed; }
+.home { align-items: center; gap: 6px; }
+.wheel-wrap { width: min(100%, 78vh, 760px); }
+.wheel { width: 100%; height: auto; display: block; overflow: visible; }
+.wheel-name { margin: 0; font-family: var(--font-display); font-weight: 700; font-size: 1.15rem; text-align: center; }
+.petal { --c: var(--muted); color: var(--c); outline: none; }
+.petal .p-bg { fill: color-mix(in srgb, var(--c) 9%, transparent); stroke: color-mix(in srgb, var(--c) 55%, transparent); stroke-width: 5; stroke-linejoin: round; }
+.petal .p-line { stroke: color-mix(in srgb, var(--c) 28%, transparent); stroke-width: 1; }
+.petal .p-hex { fill: color-mix(in srgb, var(--bg) 70%, transparent); stroke: var(--c); stroke-width: 2.5; stroke-linejoin: round; }
+.petal .p-icon { color: var(--c); }
+.petal .p-label { fill: var(--ink); font-family: var(--font-display); font-weight: 700; font-size: 17px; }
+.petal .p-dot { fill: var(--warn); stroke: var(--bg); stroke-width: 3; }
+.petal.ready { cursor: pointer; transition: filter .15s; }
+.petal.ready .p-bg { fill: color-mix(in srgb, var(--c) 16%, transparent); }
+.petal.ready:hover, .petal.ready:focus-visible { filter: drop-shadow(0 0 14px color-mix(in srgb, var(--c) 55%, transparent)); }
+.petal.soon { opacity: .6; }
+.petal.soon .p-label { fill: var(--muted); }
+.petal.empty .p-bg { stroke-dasharray: 5 6; stroke-width: 2; fill: transparent; stroke: color-mix(in srgb, var(--muted) 45%, transparent); }
+.petal.empty .p-line { stroke: color-mix(in srgb, var(--muted) 16%, transparent); }
+.hub { fill: var(--bg); stroke: #5BD38A; stroke-width: 3; }
+.hub-icon { color: #5BD38A; }
+.hub-rays line { stroke: #5BD38A; stroke-width: 1.6; stroke-linecap: round; opacity: .7; }
+.hub-glow { pointer-events: none; }
+
+body.on-home::before { content: ""; position: fixed; inset: 0; pointer-events: none; opacity: 0; background-image: radial-gradient(1.5px 1.5px at 8% 12%, #fff, transparent),radial-gradient(1.5px 1.5px at 18% 70%, #fff, transparent),radial-gradient(1.5px 1.5px at 27% 30%, #fff, transparent),radial-gradient(1.5px 1.5px at 36% 88%, #fff, transparent),radial-gradient(1.5px 1.5px at 52% 8%, #fff, transparent),radial-gradient(1.5px 1.5px at 64% 92%, #fff, transparent),radial-gradient(1.5px 1.5px at 73% 22%, #fff, transparent),radial-gradient(1.5px 1.5px at 81% 64%, #fff, transparent),radial-gradient(1.5px 1.5px at 90% 14%, #fff, transparent),radial-gradient(1.5px 1.5px at 94% 80%, #fff, transparent),radial-gradient(1.5px 1.5px at 12% 46%, #fff, transparent),radial-gradient(1.5px 1.5px at 88% 44%, #fff, transparent),radial-gradient(1.5px 1.5px at 45% 60%, #fff, transparent),radial-gradient(1.5px 1.5px at 60% 40%, #fff, transparent),radial-gradient(1.5px 1.5px at 5% 90%, #fff, transparent),radial-gradient(1.5px 1.5px at 97% 35%, #fff, transparent); }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) body.on-home::before { opacity: .55; } }
+:root[data-theme="dark"] body.on-home::before { opacity: .55; }
+.wrap { position: relative; }

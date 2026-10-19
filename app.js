@@ -512,19 +512,52 @@
     return due ? 'Потрібен полив: ' + due + ' з ' + state.plants.length : 'Сьогодні поливати нічого';
   }
 
+  // home: a wheel of petals around a hub; ready sections open, the rest wait
+  var WHEEL = [
+    { a: -22.5, id: 'plants' }, { a: 22.5, id: 'dreams' }, { a: 67.5, id: 'piano' },
+    { a: 112.5 }, { a: 157.5 }, { a: -157.5 }, { a: -112.5 }, { a: -67.5, id: 'ants' }
+  ];
+  var WCOLOR = { plants: '#5BD38A', dreams: '#F2B04A' };
+  function wp(r, deg) { var t = deg * Math.PI / 180; return [r * Math.sin(t), -r * Math.cos(t)]; }
+  function pt(c) { return c[0].toFixed(1) + ' ' + c[1].toFixed(1); }
+  var PETAL_LINES = [[0, -1, 1, 1], [0, 1, 1, -1], [0, -1, .55, 1], [0, 1, .55, -1], [.55, -1, 1, 0], [.55, 1, 1, 0], [.3, -1, .8, 1], [.3, 1, .8, -1], [.55, -1, .55, 1]];
+  function petalLocal(a, t, u) { var hw = 6 + 13 * t; return wp(78 + t * 172, a + u * hw); }
+  function inner(svg) { return svg.replace(/^<svg[^>]*>/, '').replace(/<\/svg>$/, ''); }
+
   function renderHome() {
-    var d = new Intl.DateTimeFormat('uk-UA', { weekday: 'long', day: 'numeric', month: 'long' }).format(new Date());
-    document.getElementById('home-date').innerHTML = '<strong>' + esc(d) + '</strong>';
-    document.getElementById('tiles').innerHTML = SECTIONS.map(function (s) {
-      var line = s.ready ? (s.id === 'plants' ? plantsLine() : s.id === 'dreams' ? dreamsLine() : '') : 'Скоро';
-      var warn = s.ready && s.id === 'plants' && ui.loaded && state.plants.some(function (p) { return status(p).due; });
-      return '<li><button type="button" class="tile" ' + (s.ready ? 'data-action="open-section" data-section="' + s.id + '"' : 'disabled') + '>' +
-        '<span class="tile-icon">' + s.icon + '</span>' +
-        '<span class="tile-text"><strong>' + esc(s.title) + '</strong>' +
-        '<span class="tile-sub' + (warn ? ' warn' : '') + '">' + esc(line) + '</span></span>' +
-        (s.ready ? '<svg class="tile-go" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg>' : '') +
-        '</button></li>';
-    }).join('');
+    var due = ui.loaded && state.plants.some(function (p) { return status(p).due; });
+    var out = '<svg class="wheel" viewBox="-320 -320 640 640" role="group" aria-label="Розділи">' +
+      '<defs><radialGradient id="hubglow"><stop offset="55%" stop-color="#5BD38A" stop-opacity=".35"/><stop offset="100%" stop-color="#5BD38A" stop-opacity="0"/></radialGradient></defs>';
+    WHEEL.forEach(function (w) {
+      var sec = SECTIONS.filter(function (x) { return x.id === w.id; })[0];
+      var ready = !!(sec && sec.ready), color = WCOLOR[w.id] || null;
+      var cls = 'petal' + (ready ? ' ready' : sec ? ' soon' : ' empty');
+      var d = 'M' + pt(wp(78, w.a - 6)) + ' L' + pt(wp(250, w.a - 19)) + ' A250 250 0 0 1 ' + pt(wp(250, w.a + 19)) + ' L' + pt(wp(78, w.a + 6)) + ' Z';
+      var g = '<g class="' + cls + '"' + (color ? ' style="--c:' + color + '"' : '') +
+        (ready ? ' data-action="open-section" data-section="' + sec.id + '" role="button" tabindex="0" aria-label="' + esc(sec.title) + '"' : sec ? ' aria-disabled="true"' : ' aria-hidden="true"') + '>' +
+        '<path class="p-bg" d="' + d + '"/>';
+      PETAL_LINES.forEach(function (l) {
+        g += '<line class="p-line" x1="' + petalLocal(w.a, l[0], l[1])[0].toFixed(1) + '" y1="' + petalLocal(w.a, l[0], l[1])[1].toFixed(1) + '" x2="' + petalLocal(w.a, l[2], l[3])[0].toFixed(1) + '" y2="' + petalLocal(w.a, l[2], l[3])[1].toFixed(1) + '"/>';
+      });
+      if (sec) {
+        var c = wp(165, w.a), hex = [];
+        for (var k = 0; k < 6; k++) hex.push(pt([c[0] + 40 * Math.sin(k * Math.PI / 3), c[1] - 40 * Math.cos(k * Math.PI / 3)]));
+        g += '<polygon class="p-hex" points="' + hex.join(' ') + '"/>' +
+          '<g class="p-icon" transform="translate(' + (c[0] - 17).toFixed(1) + ' ' + (c[1] - 17).toFixed(1) + ') scale(1.42)" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">' + inner(sec.icon) + '</g>';
+        if (w.id === 'plants' && due) g += '<circle class="p-dot" cx="' + (c[0] + 30).toFixed(1) + '" cy="' + (c[1] - 30).toFixed(1) + '" r="8"/>';
+        var lp = wp(272, w.a), anchor = lp[0] < -40 ? 'end' : lp[0] > 40 ? 'start' : 'middle';
+        g += '<text class="p-label" x="' + lp[0].toFixed(1) + '" y="' + (lp[1] + 4).toFixed(1) + '" text-anchor="' + anchor + '">' + esc(sec.title) + '</text>';
+      }
+      out += g + '</g>';
+    });
+    var rays = '';
+    for (var i = 0; i < 72; i++) {
+      var len = 6 + ((i * 7) % 5) * 3, a0 = wp(68, i * 5), a1 = wp(68 + len, i * 5);
+      rays += '<line x1="' + a0[0].toFixed(1) + '" y1="' + a0[1].toFixed(1) + '" x2="' + a1[0].toFixed(1) + '" y2="' + a1[1].toFixed(1) + '"/>';
+    }
+    out += '<circle r="120" fill="url(#hubglow)" class="hub-glow"/><g class="hub-rays">' + rays + '</g>' +
+      '<circle class="hub" r="62"/><g class="hub-icon" transform="translate(-26 -26) scale(2.17)" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">' + inner(ICON_PLANT) + '</g></svg>';
+    document.getElementById('wheel').innerHTML = out;
   }
 
   function applyScreen() {
@@ -1725,6 +1758,10 @@
     document.addEventListener('pointerup', function (e) { finish(e, false); });
     document.addEventListener('pointercancel', function (e) { finish(e, true); });
   })();
+
+  document.addEventListener('keydown', function (e) {
+    if ((e.key === 'Enter' || e.key === ' ') && e.target && e.target.classList && e.target.classList.contains('petal')) { e.preventDefault(); e.target.dispatchEvent(new MouseEvent('click', { bubbles: true })); }
+  });
 
   window.addEventListener('popstate', function () {
     if (ui.dreamId && !(history.state && history.state.dream)) { ui.dreamId = null; ui.confirm = null; render(); window.scrollTo(0, 0); }
