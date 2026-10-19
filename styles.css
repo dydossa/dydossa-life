@@ -473,7 +473,7 @@ body.on-dreams[data-dt] { --bg: color-mix(in srgb, var(--t) 8%, #FFFFFF); --surf
 .dprog-go { width: 52px; height: 52px; flex: none; border-radius: 50%; border: 0; background: var(--accent); color: var(--accent-ink); display: grid; place-items: center; padding: 0; cursor: pointer; }
 .dprog-go svg { width: 24px; height: 24px; }
 .dcols { display: flex; flex-direction: column; gap: 18px; }
-@media (min-width: 900px) { .dcols { display: grid; grid-template-columns: 1fr 1fr; align-items: start; } }
+
 
 /* materials gallery */
 .m-grid { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(108px, 1fr)); gap: 12px; }
@@ -497,3 +497,18 @@ body.on-dreams[data-dt] { --bg: color-mix(in srgb, var(--t) 8%, #FFFFFF); --surf
 .m-tile .more { z-index: 2; }
 .m-rename { display: flex; flex-direction: column; gap: 6px; padding: 8px 10px 10px; }
 .m-rename input { min-width: 0; width: 100%; }
+
+/* wide layout for the dreams section */
+body.on-dreams .wrap { max-width: 1180px; }
+body.on-dreams .grid { grid-template-columns: repeat(auto-fill, minmax(min(100%, 250px), 1fr)); gap: 18px; }
+.dream .thumb { aspect-ratio: 16 / 10; }
+.dhero { aspect-ratio: 16 / 10; }
+@media (min-width: 640px) { .dhero { aspect-ratio: 16 / 10; } }
+.dlayout, .dside, .dmain { display: flex; flex-direction: column; gap: 18px; min-width: 0; }
+@media (min-width: 900px) {
+  .dlayout { display: grid; grid-template-columns: 360px minmax(0, 1fr); gap: 24px; align-items: start; }
+  .dside { position: sticky; top: 16px; }
+  .dhero-text h2 { font-size: 1.7rem; }
+}
+.m-grid { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); }
+.dream-add { min-height: 140px; }

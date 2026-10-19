@@ -979,8 +979,8 @@
     }
     if (!total) html += '<div class="empty">Мрій поки немає.</div><div style="height:16px"></div>';
     else if (!list.length) html += '<div class="empty">Тут поки порожньо.</div><div style="height:16px"></div>';
-    else html += '<div class="grid">' + list.map(dreamCard).join('') + '</div><div style="height:16px"></div>';
-    html += '<button type="button" class="add-card" style="width:100%" data-action="dream-add">+ Нова мрія</button>';
+    else html += '<div class="grid">' + list.map(dreamCard).join('') + '<button type="button" class="add-card dream-add" data-action="dream-add">+ Нова мрія</button></div>';
+    if (!list.length) html += '<button type="button" class="add-card" style="width:100%" data-action="dream-add">+ Нова мрія</button>';
     dreamsView.innerHTML = html;
   }
 
@@ -1183,6 +1183,7 @@
     var nextStep = d.steps.filter(function (x) { return !x.d; })[0];
     var html = '<div class="dpage">' +
       '<button type="button" class="dback" data-action="dream-back">' + I_BACK + 'Усі мрії</button>' +
+      '<div class="dlayout"><aside class="dside">' +
       '<header class="dhero' + (d.photo ? ' has-photo' : '') + '">' +
         (d.photo ? '<img src="' + esc(d.photo) + '" alt="">' : '<span class="dhero-star">' + STAR + '</span>') +
         '<button type="button" class="dpal" data-action="dream-pal" aria-label="Колір сторінки" aria-expanded="' + dv.pal + '">' + I_PALETTE + '</button>' +
@@ -1208,8 +1209,8 @@
     } else {
       html += '<button type="button" class="primary dmake" data-action="dream-done">' + STAR + 'Мрія здійснилась</button>';
     }
-    html += '<div class="dcols"><section class="dcard">' + stepsHtml(d) + '</section>';
-    html += '<section class="dcard dropzone' + (dv.drag ? ' drag' : '') + '" id="materials">' + filesHtml(d) + '<div class="drop-cover">Відпусти файли, щоб додати</div></section></div>';
+    html += '</aside><div class="dmain"><section class="dcard">' + stepsHtml(d) + '</section>';
+    html += '<section class="dcard dropzone' + (dv.drag ? ' drag' : '') + '" id="materials">' + filesHtml(d) + '<div class="drop-cover">Відпусти файли, щоб додати</div></section></div></div>';
     html += '<div class="actions dfoot"><button type="button" class="secondary" data-action="dream-edit" data-id="' + d.id + '">Змінити назву, фото, колір</button>' +
       '<button type="button" class="danger" data-action="dream-delete">' + (ui.confirm === 'dream' ? 'Так, у корзину на 2 дні' : 'Видалити мрію') + '</button></div></div>';
     // keep what is being typed if the page is redrawn while a form is open
