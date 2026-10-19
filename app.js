@@ -947,13 +947,13 @@
     var n = d.steps.length, k = stepsDone(d), m = filesOf(d).filter(function (f) { return f.kind !== 'folder'; }).length;
     var pill = d.status === 'done'
       ? '<span class="pill done">' + STAR + 'Здійснено' + (d.doneOn ? ' ' + esc(fmtDate(d.doneOn)) : '') + '</span>'
-      : '<span class="pill' + (d.status === 'dream' ? ' quiet' : '') + '">' + DSTATUS[d.status] + '</span>';
+      : '';
     return '<article class="plant dream' + (d.status === 'done' ? ' is-done' : '') + '" data-dt="' + d.theme + '">' +
       '<button type="button" class="thumb" data-action="dream-open" data-id="' + d.id + '" aria-label="Відкрити мрію: ' + esc(d.title) + '">' +
         (d.photo ? '<img src="' + esc(d.photo) + '" alt="">' : STAR) + '</button>' +
       '<div class="plant-body">' +
         '<h3 class="dream-title"><button type="button" class="title-btn" data-action="dream-open" data-id="' + d.id + '">' + esc(d.title) + '</button></h3>' +
-        pill +
+        (pill || '') +
         (n ? '<div class="dream-progress"><div class="bar" aria-hidden="true"><i style="width:' + Math.round(k / n * 100) + '%"></i></div>' +
           '<span class="meta">' + k + ' з ' + n + ' ' + plural(n, 'кроку', 'кроків', 'кроків') + '</span></div>' : '') +
         (m ? '<p class="meta">' + m + ' ' + plural(m, 'матеріал', 'матеріали', 'матеріалів') + '</p>' : '') +
@@ -980,14 +980,9 @@
       ? '<strong>' + total + ' ' + plural(total, 'мрія', 'мрії', 'мрій') + '</strong>' + (done ? ', здійснено ' + done : '') + '.'
       : '';
     if (ui.dreamTab === 'trash') { dreamsView.innerHTML = dreamsTrashHtml(); return; }
-    var list = state.dreams.filter(function (d) { return ui.dreamFilter === 'all' || d.status === ui.dreamFilter; })
+    var list = state.dreams.filter(function (d) { return true; })
       .sort(function (a, b) { return DORDER[a.status] - DORDER[b.status] || a.ts - b.ts; });
     var html = '<div class="section-head"><h2>Мрії</h2></div><div style="height:12px"></div>';
-    if (total) {
-      html += '<div class="chips" role="group" aria-label="Показати">' + DFILTERS.map(function (f) {
-        return '<button type="button" class="chip" data-action="dream-filter" data-v="' + f.v + '" aria-pressed="' + (ui.dreamFilter === f.v) + '">' + f.t + '</button>';
-      }).join('') + '</div><div style="height:16px"></div>';
-    }
     if (!total) html += '<div class="empty">Мрій поки немає.</div><div style="height:16px"></div>';
     else if (!list.length) html += '<div class="empty">Тут поки порожньо.</div><div style="height:16px"></div>';
     else html += '<div class="grid">' + list.map(dreamCard).join('') + '<button type="button" class="add-card dream-add" data-action="dream-add">+ Нова мрія</button></div>';
@@ -1227,7 +1222,7 @@
     var nFiles = filesOf(d).filter(function (f) { return f.kind !== 'folder'; }).length;
     var badge = d.status === 'done'
       ? STAR + 'Здійснено' + (d.doneOn ? ' ' + esc(fmtDate(d.doneOn)) : '')
-      : DSTATUS[d.status];
+      : '';
     var pct = d.status === 'done' ? 100 : (nSteps ? Math.round(k / nSteps * 100) : 0);
     var nextStep = d.steps.filter(function (x) { return !x.d; })[0];
     var html = '<div class="dpage">' +
@@ -1236,7 +1231,7 @@
       '<header class="dhero' + (d.photo ? ' has-photo' : '') + '">' +
         (d.photo ? '<img src="' + esc(d.photo) + '" alt="">' : '<span class="dhero-star">' + STAR + '</span>') +
         '<button type="button" class="dpal" data-action="dream-pal" aria-label="Колір сторінки" aria-expanded="' + dv.pal + '">' + I_PALETTE + '</button>' +
-        '<div class="dhero-text"><span class="dhero-badge' + (d.status === 'done' ? ' done' : '') + '">' + badge + '</span>' +
+        '<div class="dhero-text">' + (badge ? '<span class="dhero-badge done">' + badge + '</span>' : '') +
         '<h2>' + esc(d.title) + '</h2></div>' +
       '</header>';
     if (dv.pal) html += '<div class="palette" role="radiogroup" aria-label="Колір сторінки">' + swatches(d.theme, 'dream-theme') + '</div>';

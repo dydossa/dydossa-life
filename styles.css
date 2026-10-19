@@ -557,3 +557,5 @@ body.on-dreams .grid { grid-template-columns: repeat(auto-fill, minmax(min(100%,
   .sheet.side { max-width: 400px; max-height: none; height: 100%; border-radius: 0; border-width: 0 0 0 1px; }
 }
 form.td-add { flex-direction: row; align-items: center; }
+
+.check, .check.sm { border-radius: 50%; }
