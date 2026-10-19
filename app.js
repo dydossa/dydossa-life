@@ -1,6 +1,7 @@
 /* dydossa life: the whole front end in one file.
    Data lives in Supabase (tables `items`, `entries`, private storage bucket `photos`).
    An "item" is anything you track; `section` says what kind (now only 'plants').
+   Dreams have their own table `dreams` (see the dreams part below).
    An "entry" is one action on an item (a watering) with an optional photo. */
 (function () {
   'use strict';
@@ -27,8 +28,8 @@
   }
 
   /* ---------- state ---------- */
-  var state = { plants: [], trash: [] };
-  var ui = { screen: 'home', loaded: false, tab: 'plants', sheet: null, photo: null, photoUrl: null, confirm: null, statIds: null, range: 90, galIdx: null, busy: false };
+  var state = { plants: [], trash: [], dreams: [], dreamTrash: [] };
+  var ui = { screen: 'home', loaded: false, tab: 'plants', dreamTab: 'list', dreamFilter: 'all', sheet: null, photo: null, photoUrl: null, confirm: null, statIds: null, range: 90, galIdx: null, busy: false };
   var session = null;
   var urlCache = {};
   var urlCacheAt = 0;
@@ -152,6 +153,8 @@
 
   async function refresh() {
     await fetchAll();
+    // dreams load separately so a problem there never hides the plants
+    try { await fetchDreams(); } catch (e) { console.error(e); }
     lastRefresh = Date.now();
     ui.loaded = true;
     render();
@@ -495,8 +498,10 @@
   var ICON_PLANT = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 21v-9"/><path d="M12 13c-5 0-8-3-8-8 5 0 8 3 8 8z"/><path d="M12 16c0-4 2-6 7-6 0 4-2 6-7 6z"/></svg>';
   var ICON_ANT = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="6" cy="14" r="2.5"/><circle cx="12" cy="13" r="2"/><circle cx="17.5" cy="11" r="2.5"/><path d="M6 12l-2-4M12 11l-1-4M17.5 8.5L16 5M19.5 9l2-2M4 16l-2 3M7 16l1 4M12 15l2 5M17 13.5l3 5"/></svg>';
   var ICON_PIANO = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M9 19v-6M15 19v-6M8 5v8h2V5M14 5v8h2V5"/></svg>';
+  var ICON_STAR = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1-4.4-4.3 6.1-.9z"/></svg>';
   var SECTIONS = [
     { id: 'plants', title: 'Рослини', icon: ICON_PLANT, ready: true },
+    { id: 'dreams', title: 'Мрії', icon: ICON_STAR, ready: true },
     { id: 'ants', title: 'Мурахи', icon: ICON_ANT, ready: false },
     { id: 'piano', title: 'Піаніно', icon: ICON_PIANO, ready: false }
   ];
@@ -512,7 +517,7 @@
     var d = new Intl.DateTimeFormat('uk-UA', { weekday: 'long', day: 'numeric', month: 'long' }).format(new Date());
     document.getElementById('home-date').innerHTML = '<strong>' + esc(d) + '</strong>';
     document.getElementById('tiles').innerHTML = SECTIONS.map(function (s) {
-      var line = s.ready ? (s.id === 'plants' ? plantsLine() : '') : 'Скоро';
+      var line = s.ready ? (s.id === 'plants' ? plantsLine() : s.id === 'dreams' ? dreamsLine() : '') : 'Скоро';
       var warn = s.ready && s.id === 'plants' && ui.loaded && state.plants.some(function (p) { return status(p).due; });
       return '<li><button type="button" class="tile" ' + (s.ready ? 'data-action="open-section" data-section="' + s.id + '"' : 'disabled') + '>' +
         '<span class="tile-icon">' + s.icon + '</span>' +
@@ -527,7 +532,9 @@
     var home = ui.screen === 'home';
     homeEl.hidden = !home;
     document.body.classList.toggle('on-home', home);
-    plantsScreen.hidden = home;
+    document.body.classList.toggle('on-dreams', ui.screen === 'dreams');
+    plantsScreen.hidden = ui.screen !== 'plants';
+    dreamsScreen.hidden = ui.screen !== 'dreams';
     homeBtn.hidden = home;
     trashBtn.hidden = home;
   }
@@ -535,6 +542,15 @@
   function render() {
     applyScreen();
     if (ui.screen === 'home') { renderHome(); return; }
+    var tc0 = document.getElementById('trash-count');
+    if (ui.screen === 'dreams') {
+      tc0.textContent = state.dreamTrash.length;
+      tc0.hidden = !state.dreamTrash.length;
+      trashBtn.setAttribute('aria-pressed', ui.dreamTab === 'trash' ? 'true' : 'false');
+      renderDreams();
+      if (ui.sheet && ui.sheet.type === 'dream') renderDreamDetail();
+      return;
+    }
     renderSummary();
     document.querySelectorAll('.tab').forEach(function (b) {
       b.setAttribute('aria-selected', b.getAttribute('data-tab') === ui.tab ? 'true' : 'false');
@@ -615,7 +631,9 @@
     waterForm.hidden = type !== 'water';
     plantForm.hidden = !(type === 'edit' || type === 'add');
     galleryEl.hidden = type !== 'gallery';
-    sheetEl.classList.toggle('wide', type === 'gallery');
+    dreamForm.hidden = !(type === 'dream-add' || type === 'dream-edit');
+    dreamDetail.hidden = type !== 'dream';
+    sheetEl.classList.toggle('wide', type === 'gallery' || type === 'dream');
     var first = null;
     if (type === 'water') {
       var p = findPlant(id);
@@ -642,6 +660,14 @@
       pDelete.hidden = true;
       pSubmit.disabled = false;
       first = pName;
+    } else if (type === 'dream') {
+      renderDreamDetail();
+      first = overlay.querySelector('[data-action="close"]');
+    } else if (type === 'dream-add' || type === 'dream-edit') {
+      var dd = type === 'dream-edit' ? findDream(id) : null;
+      sheetTitle.textContent = dd ? 'Змінити мрію' : 'Нова мрія';
+      fillDreamForm(dd);
+      first = dTitle;
     } else {
       var g = findAny(id);
       sheetTitle.textContent = 'Фото: ' + g.name;
@@ -649,6 +675,7 @@
       first = overlay.querySelector('[data-action="close"]');
     }
     overlay.hidden = false;
+    sheetEl.scrollTop = 0;
     setTimeout(function () { first.focus(); }, 0);
   }
   function closeSheet() {
@@ -656,6 +683,7 @@
     ui.sheet = null;
     ui.galIdx = null;
     clearPhoto();
+    if (typeof dResetPhoto === 'function') dResetPhoto();
   }
 
   // shrink a picked photo in the browser so uploads stay small
@@ -718,6 +746,274 @@
     else pSubmit.disabled = false;
   });
 
+  /* ---------- dreams ----------
+     Table `dreams`: title, why, status (dream / progress / done), target_date, done_on,
+     cover_path (one photo in the `photos` bucket), steps (a JSON list of {id, t: text, d: done}).
+     Deleting puts a dream in the trash for 2 days, like plants. */
+  var STAR = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1-4.4-4.3 6.1-.9z"/></svg>';
+  var CHECK = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>';
+  var DSTATUS = { dream: 'Мрію', progress: 'В процесі', done: 'Здійснено' };
+  var DORDER = { progress: 0, dream: 1, done: 2 };
+  var DFILTERS = [{ v: 'all', t: 'Усі' }, { v: 'dream', t: 'Мрію' }, { v: 'progress', t: 'В процесі' }, { v: 'done', t: 'Здійснені' }];
+  var dreamsView = document.getElementById('dreams-view');
+  var dreamsSummary = document.getElementById('dreams-summary');
+  var dreamsScreen = document.getElementById('dreams-screen');
+
+  function findDream(id) {
+    return state.dreams.find(function (d) { return d.id === id; }) ||
+      (state.dreamTrash.find(function (t) { return t.dream.id === id; }) || {}).dream || null;
+  }
+  function stepsDone(d) { return d.steps.filter(function (s) { return s.d; }).length; }
+  function plural(n, one, few, many) {
+    var m10 = n % 10, m100 = n % 100;
+    if (m10 === 1 && m100 !== 11) return one;
+    if (m10 >= 2 && m10 <= 4 && (m100 < 12 || m100 > 14)) return few;
+    return many;
+  }
+  function targetLine(d) {
+    if (!d.target || d.status === 'done') return '';
+    var left = diffDays(parse(d.target), today());
+    var when = 'до ' + fmtDate(d.target);
+    if (left > 0) return when + ' · ще ' + left + ' ' + plural(left, 'день', 'дні', 'днів');
+    if (left === 0) return when + ' · це сьогодні';
+    return when + ' · минуло ' + (-left) + ' дн.';
+  }
+
+  async function fetchDreams() {
+    var r = await sb.from('dreams')
+      .select('id,title,why,status,target_date,done_on,cover_path,steps,created_at,deleted_at')
+      .order('created_at', { ascending: true });
+    if (r.error) throw r.error;
+    var list = [], trash = [], now = Date.now();
+    for (var i = 0; i < r.data.length; i++) {
+      var x = r.data[i];
+      var d = {
+        id: x.id, title: x.title, why: x.why || '', status: x.status, target: x.target_date, doneOn: x.done_on,
+        path: x.cover_path, photo: null, steps: Array.isArray(x.steps) ? x.steps : [], ts: Date.parse(x.created_at) || 0
+      };
+      if (!x.deleted_at) { list.push(d); continue; }
+      var at = Date.parse(x.deleted_at);
+      if (now - at >= TRASH_MS) {
+        try { await destroyDream(d); } catch (e) { console.error(e); trash.push({ dream: d, deletedAt: at }); }
+      } else trash.push({ dream: d, deletedAt: at });
+    }
+    var all = list.concat(trash.map(function (t) { return t.dream; }));
+    await signPaths(all.map(function (d) { return d.path; }).filter(Boolean));
+    all.forEach(function (d) { d.photo = d.path ? (urlCache[d.path] || null) : null; });
+    state.dreams = list;
+    state.dreamTrash = trash;
+  }
+
+  async function uploadPhoto(blob) {
+    var path = session.user.id + '/' + uuid() + '.jpg';
+    var up = await sb.storage.from(BUCKET).upload(path, blob, { contentType: 'image/jpeg' });
+    if (up.error) throw up.error;
+    return path;
+  }
+  async function destroyDream(d) {
+    if (d.path) {
+      var rm = await sb.storage.from(BUCKET).remove([d.path]);
+      if (rm.error) throw rm.error;
+    }
+    var r = await sb.from('dreams').delete().eq('id', d.id);
+    if (r.error) throw r.error;
+  }
+  async function updateDream(id, patch) {
+    var r = await sb.from('dreams').update(patch).eq('id', id);
+    if (r.error) throw r.error;
+  }
+  // fields: { title, why, target }, photo: { blob } to set a new photo, { remove: true } to drop it
+  async function saveDream(id, fields, photo) {
+    var old = id ? findDream(id) : null;
+    var row = { title: fields.title, why: fields.why, target_date: fields.target || null };
+    var newPath = null;
+    if (photo.blob) { newPath = await uploadPhoto(photo.blob); row.cover_path = newPath; }
+    else if (photo.remove) row.cover_path = null;
+    var r = id ? await sb.from('dreams').update(row).eq('id', id) : await sb.from('dreams').insert(row);
+    if (r.error) {
+      if (newPath) await sb.storage.from(BUCKET).remove([newPath]);
+      throw r.error;
+    }
+    // the old photo is no longer used by anything
+    if (old && old.path && (newPath || photo.remove)) await sb.storage.from(BUCKET).remove([old.path]);
+  }
+  function setStatus(d, st) {
+    var patch = { status: st, done_on: st === 'done' ? (d.doneOn || iso(today())) : null };
+    return updateDream(d.id, patch);
+  }
+  function saveSteps(d, steps) {
+    var patch = { steps: steps };
+    // ticking the first step moves a dream into "in progress"
+    if (d.status === 'dream' && steps.some(function (s) { return s.d; })) patch.status = 'progress';
+    return updateDream(d.id, patch);
+  }
+
+  function dreamCard(d) {
+    var n = d.steps.length, k = stepsDone(d);
+    var pill = d.status === 'done'
+      ? '<span class="pill done">' + STAR + 'Здійснено' + (d.doneOn ? ' ' + esc(fmtDate(d.doneOn)) : '') + '</span>'
+      : '<span class="pill' + (d.status === 'dream' ? ' quiet' : '') + '">' + DSTATUS[d.status] + '</span>';
+    var tl = targetLine(d);
+    return '<article class="plant dream' + (d.status === 'done' ? ' is-done' : '') + '">' +
+      '<button type="button" class="thumb" data-action="dream-open" data-id="' + d.id + '" aria-label="Відкрити мрію: ' + esc(d.title) + '">' +
+        (d.photo ? '<img src="' + esc(d.photo) + '" alt="">' : STAR) + '</button>' +
+      '<div class="plant-body">' +
+        '<h3 class="dream-title"><button type="button" class="title-btn" data-action="dream-open" data-id="' + d.id + '">' + esc(d.title) + '</button></h3>' +
+        pill +
+        (n ? '<div class="dream-progress"><div class="bar" aria-hidden="true"><i style="width:' + Math.round(k / n * 100) + '%"></i></div>' +
+          '<span class="meta">' + k + ' з ' + n + ' ' + plural(n, 'кроку', 'кроків', 'кроків') + '</span></div>' : '') +
+        (tl ? '<p class="meta">' + esc(tl) + '</p>' : '') +
+      '</div></article>';
+  }
+
+  function dreamsTrashHtml() {
+    var head = '<div class="section-head"><h2>Корзина</h2><button type="button" class="link-btn" data-action="trash-back">← Назад</button></div><div style="height:12px"></div>';
+    if (!state.dreamTrash.length) return head + '<div class="empty">Корзина порожня. Видалені мрії з’являтимуться тут на 2 дні.</div>';
+    var now = Date.now();
+    return head + '<ul class="log-list">' + state.dreamTrash.slice().sort(function (a, b) { return b.deletedAt - a.deletedAt; }).map(function (t) {
+      var hrs = Math.max(1, Math.ceil((TRASH_MS - (now - t.deletedAt)) / 3600000));
+      var dd = Math.floor(hrs / 24), hh = hrs % 24;
+      var left = ((dd ? dd + ' дн. ' : '') + (hh ? hh + ' год' : '')).trim();
+      return '<li class="trash-item"><span class="trash-thumb">' + (t.dream.photo ? '<img src="' + esc(t.dream.photo) + '" alt="">' : STAR) + '</span>' +
+        '<div class="trash-text"><strong>' + esc(t.dream.title) + '</strong><p class="meta">Зникне остаточно через ' + left + '</p></div>' +
+        '<div class="trash-actions"><button type="button" class="secondary" data-action="dream-restore" data-id="' + t.dream.id + '">Відновити</button></div></li>';
+    }).join('') + '</ul>';
+  }
+
+  function renderDreams() {
+    var total = state.dreams.length, done = state.dreams.filter(function (d) { return d.status === 'done'; }).length;
+    dreamsSummary.innerHTML = total
+      ? '<strong>' + total + ' ' + plural(total, 'мрія', 'мрії', 'мрій') + '</strong>' + (done ? ', здійснено ' + done : '') + '.'
+      : 'Запиши те, про що мрієш. Великі мрії ростуть із маленьких кроків.';
+    if (ui.dreamTab === 'trash') { dreamsView.innerHTML = dreamsTrashHtml(); return; }
+    var list = state.dreams.filter(function (d) { return ui.dreamFilter === 'all' || d.status === ui.dreamFilter; })
+      .sort(function (a, b) { return DORDER[a.status] - DORDER[b.status] || a.ts - b.ts; });
+    var html = '<div class="section-head"><h2>Мрії</h2></div><div style="height:12px"></div>';
+    if (total) {
+      html += '<div class="chips" role="group" aria-label="Показати">' + DFILTERS.map(function (f) {
+        return '<button type="button" class="chip" data-action="dream-filter" data-v="' + f.v + '" aria-pressed="' + (ui.dreamFilter === f.v) + '">' + f.t + '</button>';
+      }).join('') + '</div><div style="height:16px"></div>';
+    }
+    if (!total) html += '<div class="empty">Мрій поки немає.</div><div style="height:16px"></div>';
+    else if (!list.length) html += '<div class="empty">Тут поки порожньо.</div><div style="height:16px"></div>';
+    else html += '<div class="grid">' + list.map(dreamCard).join('') + '</div><div style="height:16px"></div>';
+    html += '<button type="button" class="add-card" style="width:100%" data-action="dream-add">+ Нова мрія</button>';
+    dreamsView.innerHTML = html;
+  }
+
+  function dreamsLine() {
+    if (!ui.loaded) return '';
+    var total = state.dreams.length;
+    if (!total) return 'Ще немає мрій';
+    var done = state.dreams.filter(function (d) { return d.status === 'done'; }).length;
+    return total + ' ' + plural(total, 'мрія', 'мрії', 'мрій') + (done ? ' · здійснено ' + done : '');
+  }
+
+  /* dream sheet: the detail view and the add/edit form */
+  var dreamForm = document.getElementById('dream-form');
+  var dreamDetail = document.getElementById('dream-detail');
+  var dTitle = document.getElementById('d-title');
+  var dWhy = document.getElementById('d-why');
+  var dTarget = document.getElementById('d-target');
+  var dCam = document.getElementById('d-cam');
+  var dLib = document.getElementById('d-lib');
+  var dPreview = document.getElementById('d-preview');
+  var dClear = document.getElementById('d-clear');
+  var dSubmit = document.getElementById('d-submit');
+  var dPhoto = { blob: null, url: null, remove: false };
+
+  function dSetPreview(src) {
+    dPreview.hidden = !src;
+    if (src) dPreview.src = src; else dPreview.removeAttribute('src');
+    dClear.hidden = !src;
+  }
+  function dResetPhoto() {
+    if (dPhoto.url) URL.revokeObjectURL(dPhoto.url);
+    dPhoto = { blob: null, url: null, remove: false };
+    dCam.value = ''; dLib.value = '';
+  }
+  function dOnPick(input) {
+    var f = input.files && input.files[0];
+    if (!f) return;
+    fileToBlob(f, 1600).then(function (blob) {
+      if (dPhoto.url) URL.revokeObjectURL(dPhoto.url);
+      dPhoto = { blob: blob, url: URL.createObjectURL(blob), remove: false };
+      dSetPreview(dPhoto.url);
+    }).catch(function () { toast('Не вдалося прочитати це фото.'); });
+  }
+  dCam.addEventListener('change', function () { dOnPick(dCam); });
+  dLib.addEventListener('change', function () { dOnPick(dLib); });
+
+  function fillDreamForm(d) {
+    dResetPhoto();
+    dTitle.value = d ? d.title : '';
+    dWhy.value = d ? d.why : '';
+    dTarget.value = d && d.target ? d.target : '';
+    dSetPreview(d && d.photo ? d.photo : null);
+    dSubmit.disabled = false;
+    dSubmit.textContent = d ? 'Зберегти' : 'Додати мрію';
+  }
+
+  function renderDreamDetail() {
+    var d = findDream(ui.sheet.id);
+    if (!d) { closeSheet(); return; }
+    sheetTitle.textContent = d.title;
+    var n = d.steps.length, k = stepsDone(d), tl = targetLine(d);
+    var html = '';
+    if (d.photo) html += '<div class="dream-cover"><img src="' + esc(d.photo) + '" alt=""></div>';
+    html += '<div class="seg" role="group" aria-label="Стан">' + ['dream', 'progress', 'done'].map(function (s) {
+      return '<button type="button" class="seg-btn" data-action="dream-status" data-v="' + s + '" aria-pressed="' + (d.status === s) + '">' + DSTATUS[s] + '</button>';
+    }).join('') + '</div>';
+    if (d.status === 'done') html += '<p class="dream-done">' + STAR + '<span>Здійснено' + (d.doneOn ? ' ' + esc(fmtDate(d.doneOn)) : '') + '. Так тримати!</span></p>';
+    if (tl) html += '<p class="meta">Ціль: ' + esc(tl) + '</p>';
+    if (d.why) html += '<div class="dream-why"><span class="lbl">Чому я цього хочу</span><p>' + esc(d.why) + '</p></div>';
+    html += '<div class="dream-steps"><div class="section-head"><span class="lbl">Кроки до мрії</span>' + (n ? '<span class="meta">' + k + ' з ' + n + '</span>' : '') + '</div>';
+    if (n) html += '<div class="bar" aria-hidden="true"><i style="width:' + Math.round(k / n * 100) + '%"></i></div>';
+    html += '<ul class="steps">' + d.steps.map(function (s) {
+      var key = 'step:' + s.id;
+      return '<li class="step' + (s.d ? ' is-done' : '') + '">' +
+        '<button type="button" class="check" role="checkbox" aria-checked="' + !!s.d + '" data-action="step-toggle" data-step="' + esc(s.id) + '">' + CHECK + '</button>' +
+        '<span class="step-t">' + esc(s.t) + '</span>' +
+        '<button type="button" class="link-btn" data-action="step-del" data-step="' + esc(s.id) + '">' + (ui.confirm === key ? 'Точно?' : 'Прибрати') + '</button></li>';
+    }).join('') + '</ul>';
+    if (!n) html += '<p class="meta">Розбий мрію на маленькі кроки, і буде видно, як вона наближається.</p>';
+    html += '<form id="step-form" class="step-add"><input type="text" id="step-input" maxlength="140" placeholder="Новий крок" autocomplete="off" aria-label="Новий крок">' +
+      '<button type="submit" class="secondary">Додати</button></form></div>';
+    html += '<div class="actions"><button type="button" class="secondary" data-action="dream-edit" data-id="' + d.id + '">Змінити</button>' +
+      '<button type="button" class="danger" data-action="dream-delete">' + (ui.confirm === 'dream' ? 'Так, у корзину на 2 дні' : 'Видалити мрію') + '</button></div>';
+    dreamDetail.innerHTML = html;
+  }
+
+  dreamForm.addEventListener('submit', async function (e) {
+    e.preventDefault();
+    if (ui.busy || !ui.sheet) return;
+    var title = dTitle.value.trim();
+    if (!title) return;
+    var id = ui.sheet.type === 'dream-edit' ? ui.sheet.id : null;
+    var fields = { title: title, why: dWhy.value.trim(), target: dTarget.value };
+    var photo = { blob: dPhoto.blob, remove: dPhoto.remove };
+    dSubmit.disabled = true;
+    dSubmit.textContent = 'Зберігаю…';
+    var ok = await run(function () { return saveDream(id, fields, photo); }, id ? 'Збережено' : 'Мрію додано');
+    if (!ok) { dSubmit.disabled = false; dSubmit.textContent = id ? 'Зберегти' : 'Додати мрію'; return; }
+    dResetPhoto();
+    if (id) openSheet('dream', id); else closeSheet();
+  });
+
+  // adding a step: the form lives inside the detail view, which is re-drawn, so listen on the document
+  document.addEventListener('submit', function (e) {
+    if (!e.target || e.target.id !== 'step-form') return;
+    e.preventDefault();
+    var input = document.getElementById('step-input');
+    var t = input.value.trim();
+    var d = ui.sheet && findDream(ui.sheet.id);
+    if (!t || !d || ui.busy) return;
+    var steps = d.steps.concat([{ id: uuid(), t: t, d: false }]);
+    run(function () { return saveSteps(d, steps); }).then(function (ok) {
+      if (ok) { var i2 = document.getElementById('step-input'); if (i2) i2.focus(); }
+    });
+  });
+
   /* ---------- sign in and out ---------- */
   var authEl = document.getElementById('auth');
   var appEl = document.getElementById('app');
@@ -729,7 +1025,7 @@
 
   function showLogin() {
     session = null;
-    state = { plants: [], trash: [] };
+    state = { plants: [], trash: [], dreams: [], dreamTrash: [] };
     ui.tab = 'plants';
     ui.screen = 'home';
     ui.loaded = false;
@@ -801,7 +1097,7 @@
     var act = el.getAttribute('data-action');
     var id = el.getAttribute('data-id');
 
-    if (act === 'open-section') { ui.screen = el.getAttribute('data-section'); ui.tab = 'plants'; ui.confirm = null; render(); window.scrollTo(0, 0); }
+    if (act === 'open-section') { ui.screen = el.getAttribute('data-section'); ui.tab = 'plants'; ui.dreamTab = 'list'; ui.confirm = null; render(); window.scrollTo(0, 0); }
     else if (act === 'home') { closeSheet(); ui.screen = 'home'; ui.confirm = null; render(); window.scrollTo(0, 0); }
     else if (act === 'water') openSheet('water', id);
     else if (act === 'edit') openSheet('edit', id);
@@ -822,8 +1118,40 @@
       renderDiary();
     }
     else if (act === 'stat-range') { ui.range = Number(el.getAttribute('data-range')); renderDiary(); }
+    else if (act === 'trash-open' && ui.screen === 'dreams') { ui.dreamTab = ui.dreamTab === 'trash' ? 'list' : 'trash'; render(); }
+    else if (act === 'trash-back' && ui.screen === 'dreams') { ui.dreamTab = 'list'; render(); }
     else if (act === 'trash-open') { ui.tab = ui.tab === 'trash' ? 'plants' : 'trash'; ui.confirm = null; render(); }
     else if (act === 'trash-back') { ui.tab = 'plants'; ui.confirm = null; render(); }
+    else if (act === 'dream-add') openSheet('dream-add');
+    else if (act === 'dream-open') openSheet('dream', id);
+    else if (act === 'dream-edit') openSheet('dream-edit', id);
+    else if (act === 'dream-filter') { ui.dreamFilter = el.getAttribute('data-v'); renderDreams(); }
+    else if (act === 'd-pick-cam') dCam.click();
+    else if (act === 'd-pick-lib') dLib.click();
+    else if (act === 'd-photo-clear') { dResetPhoto(); dPhoto.remove = true; dSetPreview(null); }
+    else if (act === 'dream-restore') run(function () { return updateDream(id, { deleted_at: null }); }, 'Мрію відновлено');
+    else if (act === 'dream-status') {
+      var ds = ui.sheet && findDream(ui.sheet.id), v = el.getAttribute('data-v');
+      if (ds && ds.status !== v) run(function () { return setStatus(ds, v); }, v === 'done' ? 'Мрія здійснилась!' : null);
+    }
+    else if (act === 'step-toggle' || act === 'step-del') {
+      var dz = ui.sheet && findDream(ui.sheet.id), sid = el.getAttribute('data-step');
+      if (!dz) return;
+      if (act === 'step-del' && ui.confirm !== 'step:' + sid) { ui.confirm = 'step:' + sid; renderDreamDetail(); return; }
+      ui.confirm = null;
+      var next = act === 'step-del'
+        ? dz.steps.filter(function (s) { return s.id !== sid; })
+        : dz.steps.map(function (s) { return s.id === sid ? { id: s.id, t: s.t, d: !s.d } : s; });
+      run(function () { return saveSteps(dz, next); });
+    }
+    else if (act === 'dream-delete') {
+      if (ui.confirm !== 'dream') { ui.confirm = 'dream'; renderDreamDetail(); }
+      else {
+        var did = ui.sheet && ui.sheet.id;
+        ui.confirm = null;
+        run(function () { return updateDream(did, { deleted_at: new Date().toISOString() }); }, 'Мрію переміщено в корзину на 2 дні').then(function (ok) { if (ok) closeSheet(); });
+      }
+    }
     else if (act === 'restore') {
       run(function () { return restorePlant(id); }, 'Рослину відновлено');
     }

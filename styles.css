@@ -282,3 +282,38 @@ body.on-home { --bg: #F1F1EF; --surface: #FFFFFF; --surface-2: #E7E7E4; --ink: #
 .tile-sub { color: var(--muted); font-size: 1rem; }
 .tile-sub.warn { color: var(--warn); font-weight: 600; }
 .tile-go { width: 24px; height: 24px; color: var(--muted); flex: none; }
+
+/* Dreams: its own soft violet accent, the same layout as plants */
+body.on-dreams { --bg: #F1EFF6; --surface: #FBFAFD; --surface-2: #E8E4F1; --ink: #24202E; --muted: #625B73; --line: #D9D3E7; --axis: #BDB4D0; --accent: #6A4FB3; --accent-ink: #FFFFFF; --accent-soft: #E6E0F5; --accent-strong: #4E3891; }
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) body.on-dreams { --bg: #121018; --surface: #1B1824; --surface-2: #26222F; --ink: #EAE6F2; --muted: #A9A1BA; --line: #2F2A3B; --axis: #453E55; --accent: #B7A2F0; --accent-ink: #17121F; --accent-soft: #2E2640; --accent-strong: #D3C6F7; }
+}
+:root[data-theme="dark"] body.on-dreams { --bg: #121018; --surface: #1B1824; --surface-2: #26222F; --ink: #EAE6F2; --muted: #A9A1BA; --line: #2F2A3B; --axis: #453E55; --accent: #B7A2F0; --accent-ink: #17121F; --accent-soft: #2E2640; --accent-strong: #D3C6F7; }
+
+.dream-title { font-family: var(--font-display); font-size: 1.3rem; margin: 0; letter-spacing: -0.01em; overflow-wrap: anywhere; }
+.pill svg { width: 16px; height: 16px; margin-right: 6px; flex: none; }
+.pill.quiet { background: var(--surface-2); color: var(--muted); }
+.pill.done { background: var(--accent); color: var(--accent-ink); align-items: center; }
+.dream-progress { display: flex; flex-direction: column; gap: 6px; }
+.dream.is-done .thumb img { filter: saturate(1.05); }
+
+#dream-detail { display: flex; flex-direction: column; gap: 16px; }
+.dream-cover { position: relative; aspect-ratio: 4 / 3; border-radius: 16px; overflow: hidden; background: var(--surface-2); }
+.dream-cover img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; display: block; }
+.dream-done { display: flex; align-items: center; gap: 10px; margin: 0; padding: 12px 14px; border-radius: 14px; background: var(--accent-soft); color: var(--accent-strong); font-weight: 600; }
+.dream-done svg { width: 22px; height: 22px; flex: none; }
+.dream-why { background: var(--bg); border: 1px solid var(--line); border-radius: 14px; padding: 12px 14px; }
+.dream-why p { margin: 6px 0 0; white-space: pre-wrap; overflow-wrap: anywhere; }
+.lbl { font-weight: 600; font-size: .92rem; }
+.dream-steps { display: flex; flex-direction: column; gap: 10px; }
+.steps { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
+.step { display: flex; align-items: center; gap: 12px; padding: 4px 0; }
+.step-t { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.step.is-done .step-t { color: var(--muted); text-decoration: line-through; }
+.check { width: 28px; height: 28px; flex: none; border-radius: 8px; border: 2px solid var(--line); background: var(--surface); display: grid; place-items: center; padding: 0; color: transparent; }
+.check svg { width: 18px; height: 18px; }
+.check[aria-checked="true"] { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+form.step-add { flex-direction: row; gap: 8px; }
+.step-add input { flex: 1; min-width: 0; border: 1px solid var(--line); background: var(--bg); border-radius: 12px; padding: 10px 12px; min-height: 44px; }
+.field textarea { border: 1px solid var(--line); background: var(--bg); border-radius: 12px; padding: 11px 12px; width: 100%; resize: vertical; font: inherit; color: inherit; }
+.opt { font-weight: 400; color: var(--muted); }

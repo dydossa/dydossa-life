@@ -12,7 +12,7 @@
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
 <link rel="icon" type="image/png" href="icons/icon-192.png">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=Figtree:wght@400;500;600&display=swap">
-<link rel="stylesheet" href="styles.css?v=6">
+<link rel="stylesheet" href="styles.css?v=7">
 </head>
 <body>
 
@@ -73,6 +73,12 @@
     <main id="view"><div class="loading">Завантаження…</div></main>
   </div>
 
+  <!-- Dreams section -->
+  <div class="section-screen" id="dreams-screen" hidden>
+    <p class="summary" id="dreams-summary"></p>
+    <main id="dreams-view"></main>
+  </div>
+
   <p class="foot">Дані зберігаються в хмарі, тож однакові на всіх пристроях. <button type="button" class="link-btn" data-action="signout" style="min-height:0;padding:0">Вийти</button></p>
 </div>
 
@@ -121,6 +127,38 @@
     </form>
 
     <div id="gallery" hidden></div>
+
+    <form id="dream-form" hidden>
+      <div class="field">
+        <label for="d-title">Назва мрії</label>
+        <input type="text" id="d-title" maxlength="80" required autocomplete="off" placeholder="Наприклад: поїхати в Японію">
+      </div>
+      <div class="field">
+        <span class="lbl">Фото</span>
+        <div class="photo-pick">
+          <button type="button" class="secondary desk-only" data-action="d-pick-lib"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h6l2 2h8v10H4z"/></svg>Вибрати файл</button>
+          <button type="button" class="secondary touch-only" data-action="d-pick-cam"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg>Зробити фото</button>
+          <button type="button" class="secondary touch-only" data-action="d-pick-lib"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="10" r="1.8"/><path d="M21 16l-5-5-8 9"/></svg>З галереї</button>
+          <input type="file" id="d-cam" accept="image/*" capture="environment" hidden>
+          <input type="file" id="d-lib" accept="image/*" hidden>
+        </div>
+        <img class="preview" id="d-preview" alt="Попередній перегляд фото" hidden>
+        <button type="button" class="link-btn" id="d-clear" data-action="d-photo-clear" style="align-self:flex-start" hidden>Прибрати фото</button>
+      </div>
+      <div class="field">
+        <label for="d-why">Чому я цього хочу <span class="opt">(необов’язково)</span></label>
+        <textarea id="d-why" maxlength="2000" rows="3" placeholder="Що це змінить, як я себе відчуватиму"></textarea>
+      </div>
+      <div class="field">
+        <label for="d-target">До якої дати <span class="opt">(необов’язково)</span></label>
+        <input type="date" id="d-target">
+      </div>
+      <div class="actions">
+        <button type="submit" class="primary" id="d-submit">Зберегти</button>
+      </div>
+    </form>
+
+    <div id="dream-detail" hidden></div>
   </div>
 </div>
 
@@ -128,6 +166,6 @@
 
 <script src="vendor/supabase.js"></script>
 <script src="config.js"></script>
-<script src="app.js?v=6"></script>
+<script src="app.js?v=7"></script>
 </body>
 </html>
