@@ -863,8 +863,8 @@ body.on-home .wheel .hx.soon .hx-in { opacity: .8; }
 :root[data-theme="dark"] .bg-glow.g2 { background: radial-gradient(circle, #34204F 0%, transparent 65%); }
 
 /* theme switch: the new theme grows out of the button */
-::view-transition-old(root), ::view-transition-new(root) { animation: none; mix-blend-mode: normal; }
-::view-transition-new(root) { z-index: 2; }
+.vt-theme::view-transition-old(root), .vt-theme::view-transition-new(root) { animation: none; mix-blend-mode: normal; }
+.vt-theme::view-transition-new(root) { z-index: 2; }
 @media (prefers-reduced-motion: reduce) { .bg::before, .e-arc { animation: none !important; } }
 
 /* flower badges in the same outline style as the list */
@@ -970,3 +970,14 @@ body.on-plants .add-tile { min-height: 220px; flex-direction: column; gap: 12px;
 body.on-plants .add-tile svg { width: 28px; height: 28px; }
 .section-screen.entering .add-tile { animation: cardIn .7s cubic-bezier(.2, .9, .25, 1) backwards; animation-delay: calc(.18s + var(--i) * 70ms); }
 @media (max-width: 600px) { body.on-plants .add-tile { min-height: 84px; flex-direction: row; } body.on-plants .add-tile svg { width: 20px; height: 20px; } }
+
+/* page to page: the old page sinks back and fades, the new one rises in */
+.vt-page::view-transition-old(root) { animation: vtOut .22s cubic-bezier(.4, 0, 1, 1) both; }
+.vt-page::view-transition-new(root) { animation: vtIn .38s cubic-bezier(.2, .9, .25, 1) .04s both; }
+@keyframes vtOut { to { opacity: 0; transform: scale(.975); filter: blur(3px); } }
+@keyframes vtIn { from { opacity: 0; transform: translateY(14px) scale(1.01); filter: blur(3px); } }
+.page-in { animation: vtIn .42s cubic-bezier(.2, .9, .25, 1) both; }
+@media (prefers-reduced-motion: reduce) { .page-in { animation: none; } }
+.vt-page .top { view-transition-name: top; }
+.vt-page .bg { view-transition-name: sky; }
+.vt-page::view-transition-group(top), .vt-page::view-transition-group(sky) { animation-duration: .35s; }

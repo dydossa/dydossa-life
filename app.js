@@ -708,11 +708,28 @@
     }
   }
 
+  // page changes cross-fade: the old page sinks back, the new one rises in
+  function go(fn) {
+    if (reduceMotion) { fn(); return; }
+    var html = document.documentElement;
+    if (document.startViewTransition) {
+      html.classList.add('vt-page');
+      var t = document.startViewTransition(fn);
+      t.finished.then(done, done);
+      function done() { html.classList.remove('vt-page'); }
+      return;
+    }
+    fn();
+    var el = [homeEl, plantsScreen, dreamsScreen].filter(function (x) { return !x.hidden; })[0];
+    if (el) { el.classList.remove('page-in'); void el.offsetWidth; el.classList.add('page-in'); }
+  }
   function openSection(id) {
     ui.screen = id; ui.tab = 'plants'; ui.dreamTab = 'list'; ui.dreamId = null; ui.confirm = null;
     var scr = document.getElementById(id + '-screen');
-    if (scr && !reduceMotion) { scr.classList.remove('entering'); void scr.offsetWidth; scr.classList.add('entering'); setTimeout(function () { scr.classList.remove('entering'); }, 1600); }
-    render(); window.scrollTo(0, 0);
+    go(function () {
+      if (scr && !reduceMotion) { scr.classList.remove('entering'); void scr.offsetWidth; scr.classList.add('entering'); setTimeout(function () { scr.classList.remove('entering'); }, 1600); }
+      render(); window.scrollTo(0, 0);
+    });
   }
   // a tap: the branch lights up, a ripple runs over the icon, then the section opens
   function petalTap(el) {
@@ -1632,12 +1649,12 @@
         ui.dreamId = id; ui.confirm = null;
         dv = { folder: null, note: null, inline: null, add: false, menu: null, drag: false, pal: false, step: null };
         try { history.pushState({ dream: id }, ''); } catch (e) {}
-        render(); window.scrollTo(0, 0);
+        go(function () { render(); window.scrollTo(0, 0); });
         return true;
       case 'dream-back':
         ui.dreamId = null; ui.confirm = null;
         try { if (history.state && history.state.dream) history.replaceState(null, ''); } catch (e) {}
-        render(); window.scrollTo(0, 0);
+        go(function () { render(); window.scrollTo(0, 0); });
         return true;
       case 'dream-edit': openSheet('dream-edit', id); return true;
       case 'dream-filter': ui.dreamFilter = el.getAttribute('data-v'); renderDreams(); return true;
@@ -1787,7 +1804,7 @@
   document.addEventListener('pointerdown', function (e) { pressOnBackdrop = (e.target === overlay); }, true);
   document.addEventListener('click', function (e) {
     var tab = e.target.closest('[data-tab]');
-    if (tab) { ui.tab = tab.getAttribute('data-tab'); ui.confirm = null; render(); return; }
+    if (tab) { var tv = tab.getAttribute('data-tab'); if (tv !== ui.tab) go(function () { ui.tab = tv; ui.confirm = null; render(); }); return; }
 
     // Close only when the press AND the release both happened on the dark backdrop.
     // (Selecting text in a field and letting go outside the window used to close it.)
@@ -1801,7 +1818,7 @@
     if (act === 'open-section') openSection(el.getAttribute('data-section'));
     else if (act === 'petal') petalTap(el);
     else if (act === 'home-view') setHomeView(homeView === 'wheel' ? 'list' : 'wheel');
-    else if (act === 'home') { closeSheet(); ui.screen = 'home'; ui.confirm = null; render(); window.scrollTo(0, 0); }
+    else if (act === 'home') { closeSheet(); if (ui.screen !== 'home') go(function () { ui.screen = 'home'; ui.confirm = null; render(); window.scrollTo(0, 0); }); }
     else if (act === 'water') openSheet('water', id);
     else if (act === 'edit') openSheet('edit', id);
     else if (act === 'add') openSheet('add');
@@ -1821,10 +1838,10 @@
       renderDiary();
     }
     else if (act === 'stat-range') { ui.range = Number(el.getAttribute('data-range')); renderDiary(); }
-    else if (act === 'trash-open' && ui.screen === 'dreams') { ui.dreamTab = ui.dreamTab === 'trash' ? 'list' : 'trash'; ui.dreamId = null; render(); }
-    else if (act === 'trash-back' && ui.screen === 'dreams') { ui.dreamTab = 'list'; render(); }
-    else if (act === 'trash-open') { ui.tab = ui.tab === 'trash' ? 'plants' : 'trash'; ui.confirm = null; render(); }
-    else if (act === 'trash-back') { ui.tab = 'plants'; ui.confirm = null; render(); }
+    else if (act === 'trash-open' && ui.screen === 'dreams') go(function () { ui.dreamTab = ui.dreamTab === 'trash' ? 'list' : 'trash'; ui.dreamId = null; render(); });
+    else if (act === 'trash-back' && ui.screen === 'dreams') go(function () { ui.dreamTab = 'list'; render(); });
+    else if (act === 'trash-open') go(function () { ui.tab = ui.tab === 'trash' ? 'plants' : 'trash'; ui.confirm = null; render(); });
+    else if (act === 'trash-back') go(function () { ui.tab = 'plants'; ui.confirm = null; render(); });
     else if (dreamAction(act, el, id)) { /* handled in the dreams part */ }
     else if (act === 'restore') {
       run(function () { return restorePlant(id); }, 'Рослину відновлено');
@@ -1960,7 +1977,7 @@
   })();
 
   window.addEventListener('popstate', function () {
-    if (ui.dreamId && !(history.state && history.state.dream)) { ui.dreamId = null; ui.confirm = null; render(); window.scrollTo(0, 0); }
+    if (ui.dreamId && !(history.state && history.state.dream)) go(function () { ui.dreamId = null; ui.confirm = null; render(); window.scrollTo(0, 0); });
   });
 
   /* ---------- theme ---------- */
@@ -1988,7 +2005,9 @@
     if (!document.startViewTransition || reduceMotion) { apply(); return; }
     var r = themeBtn.getBoundingClientRect(), x = r.left + r.width / 2, y = r.top + r.height / 2;
     var end = Math.hypot(Math.max(x, innerWidth - x), Math.max(y, innerHeight - y));
+    root.classList.add('vt-theme');
     var t = document.startViewTransition(apply);
+    t.finished.then(function () { root.classList.remove('vt-theme'); }, function () { root.classList.remove('vt-theme'); });
     t.ready.then(function () {
       root.animate({ clipPath: ['circle(0px at ' + x + 'px ' + y + 'px)', 'circle(' + end + 'px at ' + x + 'px ' + y + 'px)'] },
         { duration: 650, easing: 'cubic-bezier(.4, 0, .2, 1)', pseudoElement: '::view-transition-new(root)' });
