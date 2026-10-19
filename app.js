@@ -755,6 +755,9 @@
   var I_FOLDER = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>';
   var I_NOTE = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 3h9l4 4v14H6z"/><path d="M14 3v5h5M9 13h7M9 17h5"/></svg>';
   var I_FILE = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3H6v18h12V7z"/><path d="M14 3v4h4"/></svg>';
+  var I_CLIP = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20.5 11.5l-8.2 8.2a5 5 0 0 1-7.1-7.1l8.5-8.5a3.3 3.3 0 0 1 4.7 4.7l-8.5 8.5a1.7 1.7 0 0 1-2.4-2.4l7.8-7.8"/></svg>';
+  var I_PLUS = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>';
+  var I_MORE = '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="5" cy="12" r="1.8"/><circle cx="12" cy="12" r="1.8"/><circle cx="19" cy="12" r="1.8"/></svg>';
   var I_BACK = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 6l-6 6 6 6"/></svg>';
   var DSTATUS = { dream: 'Мрію', progress: 'В процесі', done: 'Здійснено' };
   var DORDER = { progress: 0, dream: 1, done: 2 };
@@ -995,7 +998,7 @@
   var dPhoto = { blob: null, url: null, remove: false };
   // what the detail view shows: tab 'steps' or 'files', the open folder, an open note ('new' for a new one),
   // and which inline form is open ('folder' or 'rename:<id>')
-  var dv = { tab: 'steps', folder: null, note: null, inline: null };
+  var dv = { folder: null, note: null, inline: null, add: false, menu: null, drag: false };
 
   function dSetPreview(src) {
     dPreview.hidden = !src;
@@ -1019,16 +1022,19 @@
   dCam.addEventListener('change', function () { dOnPick(dCam); });
   dLib.addEventListener('change', function () { dOnPick(dLib); });
   mFiles.addEventListener('change', function () {
-    var d = curDream();
     var files = Array.prototype.slice.call(mFiles.files || []);
     mFiles.value = '';
-    if (!d || !files.length) return;
+    uploadMaterials(files);
+  });
+  function uploadMaterials(files) {
+    var d = curDream();
+    if (!d || !files.length || ui.busy) return;
     var big = files.filter(function (f) { return f.size > FILE_MAX; });
     if (big.length) { toast('Файл більший за 50 МБ: ' + big[0].name); return; }
     var parent = dv.folder;
     toast(files.length > 1 ? 'Завантажую ' + files.length + ' файли…' : 'Завантажую файл…');
     run(function () { return addFiles(d, parent, files); }, files.length > 1 ? 'Файли додано' : 'Файл додано');
-  });
+  }
 
   function fillDreamForm(d) {
     dResetPhoto();
@@ -1043,8 +1049,8 @@
     var n = d.steps.length, k = stepsDone(d);
     // open steps first in the order they were added, finished ones go to the bottom
     var ordered = d.steps.filter(function (s) { return !s.d; }).concat(d.steps.filter(function (s) { return s.d; }));
-    var html = '<div class="dream-steps">';
-    if (n) html += '<div class="section-head"><span class="meta">Виконано ' + k + ' з ' + n + '</span></div><div class="bar" aria-hidden="true"><i style="width:' + Math.round(k / n * 100) + '%"></i></div>';
+    var html = '<div class="dream-steps"><div class="dsec-head"><h3>Кроки</h3>' + (n ? '<span class="meta">виконано ' + k + ' з ' + n + '</span>' : '') + '</div>';
+    if (n) html += '<div class="bar" aria-hidden="true"><i style="width:' + Math.round(k / n * 100) + '%"></i></div>';
     html += '<form id="step-form" class="step-add"><input type="text" id="step-input" maxlength="140" placeholder="Новий крок" autocomplete="off" aria-label="Новий крок">' +
       '<button type="submit" class="secondary">Додати</button></form>';
     html += '<ul class="steps">' + ordered.map(function (s) {
@@ -1071,25 +1077,33 @@
 
   function filesHtml(d) {
     if (dv.note) return noteHtml(d);
-    // breadcrumb: Матеріали / folder / subfolder
     var trail = [], cur = dv.folder ? findFile(d, dv.folder) : null;
     if (dv.folder && !cur) dv.folder = null;
     while (cur) { trail.unshift(cur); cur = cur.parent ? findFile(d, cur.parent) : null; }
-    var html = !trail.length ? '' : '<nav class="crumbs" aria-label="Шлях"><button type="button" class="crumb" data-action="m-folder" data-m=""' + (trail.length ? '' : ' aria-current="page"') + '>Матеріали</button>' +
-      trail.map(function (f, i) {
-        return '<span aria-hidden="true">/</span><button type="button" class="crumb" data-action="m-folder" data-m="' + f.id + '"' + (i === trail.length - 1 ? ' aria-current="page"' : '') + '>' + esc(f.name) + '</button>';
-      }).join('') + '</nav>';
-    html += '<div class="m-tools">' +
-      '<button type="button" class="secondary" data-action="m-new-folder">' + I_FOLDER + 'Папка</button>' +
-      '<button type="button" class="secondary" data-action="m-new-note">' + I_NOTE + 'Нотатка</button>' +
-      '<button type="button" class="secondary" data-action="m-new-file">' + I_FILE + 'Файл</button></div>';
+    var nAll = filesOf(d).filter(function (f) { return f.kind !== 'folder'; }).length;
+    var html = '<div class="dsec-head"><h3>Матеріали</h3>' +
+      '<button type="button" class="add-btn" data-action="m-add" aria-expanded="' + dv.add + '">' + I_PLUS + 'Додати</button></div>';
+    if (trail.length) {
+      html += '<nav class="crumbs" aria-label="Шлях"><button type="button" class="crumb" data-action="m-folder" data-m="">Усі матеріали</button>' +
+        trail.map(function (f, i) {
+          return '<span aria-hidden="true">/</span><button type="button" class="crumb" data-action="m-folder" data-m="' + f.id + '"' + (i === trail.length - 1 ? ' aria-current="page"' : '') + '>' + esc(f.name) + '</button>';
+        }).join('') + '</nav>';
+    }
+    if (dv.add) {
+      html += '<div class="add-menu">' +
+        '<button type="button" data-action="m-new-file"><span class="ai clip">' + I_CLIP + '</span><span><strong>Файл</strong><small>фото, документ, будь-що</small></span></button>' +
+        '<button type="button" data-action="m-new-note"><span class="ai">' + I_NOTE + '</span><span><strong>Нотатка</strong><small>написати текст</small></span></button>' +
+        '<button type="button" data-action="m-new-folder"><span class="ai">' + I_FOLDER + '</span><span><strong>Папка</strong><small>щоб розкласти по місцях</small></span></button></div>';
+    }
     if (dv.inline === 'folder') {
       html += '<form id="folder-form" class="step-add"><input type="text" id="folder-input" maxlength="120" placeholder="Назва папки" autocomplete="off" aria-label="Назва папки">' +
         '<button type="submit" class="secondary">Створити</button><button type="button" class="link-btn" data-action="m-cancel">Скасувати</button></form>';
     }
     var items = childrenOf(d, dv.folder);
     if (!items.length) {
-      html += '<p class="empty">' + (dv.folder ? 'Папка порожня.' : 'Тут можна зберігати все про цю мрію: нотатки, документи, фото, посилання. Розклади їх по папках.') + '</p>';
+      html += '<button type="button" class="drop-empty" data-action="m-new-file">' + I_CLIP +
+        '<strong>' + (dv.folder ? 'Папка порожня' : 'Поки нічого немає') + '</strong>' +
+        '<span>Натисни, щоб додати файл' + (isTouch ? '' : ', або перетягни його сюди') + '</span></button>';
       return html;
     }
     html += '<ul class="m-list">' + items.map(function (f) {
@@ -1110,11 +1124,15 @@
       } else {
         main = '<button type="button" class="m-main" data-action="' + (f.kind === 'folder' ? 'm-folder' : 'm-note') + '" data-m="' + f.id + '"><strong>' + esc(f.name) + '</strong><span class="meta">' + meta + '</span></button>';
       }
-      return '<li class="m-row">' + lead + main +
-        '<span class="m-acts">' +
-        (f.kind !== 'note' && dv.inline !== 'rename:' + f.id ? '<button type="button" class="link-btn" data-action="m-rename" data-m="' + f.id + '">Назва</button>' : '') +
-        '<button type="button" class="link-btn" data-action="m-del" data-m="' + f.id + '">' + (ui.confirm === key ? 'Точно?' : 'Видалити') + '</button></span></li>';
+      var open = dv.menu === f.id;
+      return '<li class="m-row' + (open ? ' open' : '') + '"><div class="m-line">' + lead + main +
+        '<button type="button" class="more" data-action="m-menu" data-m="' + f.id + '" aria-label="Дії" aria-expanded="' + open + '">' + I_MORE + '</button></div>' +
+        (open ? '<div class="m-menu">' +
+          (f.kind !== 'note' ? '<button type="button" class="secondary" data-action="m-rename" data-m="' + f.id + '">Перейменувати</button>' : '') +
+          '<button type="button" class="danger" data-action="m-del" data-m="' + f.id + '">' + (ui.confirm === key ? 'Точно видалити?' : 'Видалити') + '</button></div>' : '') +
+        '</li>';
     }).join('') + '</ul>';
+    if (!isTouch) html += '<p class="meta drop-hint">Файли можна перетягнути сюди з комп’ютера.</p>';
     return html;
   }
 
@@ -1150,11 +1168,8 @@
     } else {
       html += '<button type="button" class="primary dmake" data-action="dream-done">' + STAR + 'Мрія здійснилась</button>';
     }
-    html += '<section class="dcard">' +
-      '<div class="tabs" role="tablist" aria-label="Розділи мрії">' +
-      '<button type="button" class="tab" role="tab" data-action="d-tab" data-v="steps" aria-selected="' + (dv.tab === 'steps') + '">Кроки' + (nSteps ? ' · ' + k + '/' + nSteps : '') + '</button>' +
-      '<button type="button" class="tab" role="tab" data-action="d-tab" data-v="files" aria-selected="' + (dv.tab === 'files') + '">Матеріали' + (nFiles ? ' · ' + nFiles : '') + '</button></div>' +
-      '<div class="d-pane">' + (dv.tab === 'steps' ? stepsHtml(d) : filesHtml(d)) + '</div></section>';
+    html += '<section class="dcard">' + stepsHtml(d) + '</section>';
+    html += '<section class="dcard dropzone' + (dv.drag ? ' drag' : '') + '" id="materials">' + filesHtml(d) + '<div class="drop-cover">Відпусти файли, щоб додати</div></section>';
     html += '<div class="actions dfoot"><button type="button" class="secondary" data-action="dream-edit" data-id="' + d.id + '">Змінити назву, фото</button>' +
       '<button type="button" class="danger" data-action="dream-delete">' + (ui.confirm === 'dream' ? 'Так, у корзину на 2 дні' : 'Видалити мрію') + '</button></div></div>';
     // keep what is being typed if the page is redrawn while a form is open
@@ -1235,7 +1250,7 @@
       case 'dream-add': openSheet('dream-add'); return true;
       case 'dream-open':
         ui.dreamId = id; ui.confirm = null;
-        dv = { tab: 'steps', folder: null, note: null, inline: null };
+        dv = { folder: null, note: null, inline: null, add: false, menu: null, drag: false };
         try { history.pushState({ dream: id }, ''); } catch (e) {}
         render(); window.scrollTo(0, 0);
         return true;
@@ -1258,7 +1273,8 @@
       case 'dream-undone':
         run(function () { return setStatus(d, stepsDone(d) ? 'progress' : 'dream'); });
         return true;
-      case 'd-tab': dv.tab = el.getAttribute('data-v'); ui.confirm = null; renderDreamDetail(); return true;
+      case 'm-add': dv.add = !dv.add; dv.inline = null; renderDreamDetail(); return true;
+      case 'm-menu': dv.menu = dv.menu === m ? null : m; ui.confirm = null; renderDreamDetail(); return true;
       case 'step-toggle':
       case 'step-del':
         var sid = el.getAttribute('data-step');
@@ -1269,27 +1285,28 @@
           : d.steps.map(function (s) { return s.id === sid ? { id: s.id, t: s.t, d: !s.d } : s; });
         run(function () { return saveSteps(d, next); });
         return true;
-      case 'm-folder': dv.folder = m || null; dv.inline = null; ui.confirm = null; renderDreamDetail(); return true;
-      case 'm-note': dv.note = m; ui.confirm = null; renderDreamDetail(); return true;
+      case 'm-folder': dv.folder = m || null; dv.inline = null; dv.add = false; dv.menu = null; ui.confirm = null; renderDreamDetail(); return true;
+      case 'm-note': dv.note = m; dv.add = false; ui.confirm = null; renderDreamDetail(); return true;
       case 'm-back': dv.note = null; ui.confirm = null; renderDreamDetail(); return true;
       case 'm-new-folder':
-        dv.inline = 'folder'; renderDreamDetail();
+        dv.inline = 'folder'; dv.add = false; renderDreamDetail();
         var fi = document.getElementById('folder-input'); if (fi) fi.focus();
         return true;
       case 'm-cancel': dv.inline = null; renderDreamDetail(); return true;
       case 'm-new-note':
-        dv.note = 'new'; renderDreamDetail();
+        dv.note = 'new'; dv.add = false; renderDreamDetail();
         var nt = document.getElementById('note-title'); if (nt) nt.focus();
         return true;
-      case 'm-new-file': mFiles.click(); return true;
+      case 'm-new-file': dv.add = false; renderDreamDetail(); mFiles.click(); return true;
       case 'm-rename':
-        dv.inline = 'rename:' + m; renderDreamDetail();
+        dv.inline = 'rename:' + m; dv.menu = null; renderDreamDetail();
         var ri = document.getElementById('rename-input'); if (ri) { ri.focus(); ri.select(); }
         return true;
       case 'm-del':
         if (ui.confirm !== 'm:' + m) { ui.confirm = 'm:' + m; renderDreamDetail(); return true; }
         ui.confirm = null;
         if (dv.note === m) dv.note = null;
+        dv.menu = null;
         run(function () { return deleteMaterial(d, m); }, 'Видалено');
         return true;
       case 'dream-delete':
@@ -1456,6 +1473,22 @@
       refresh().catch(function (err) { console.error(err); });
     }
   });
+
+  // drag files from the computer onto the materials card
+  (function () {
+    var depth = 0;
+    function zone(e) { return e.target && e.target.closest ? e.target.closest('#materials') : null; }
+    function hasFiles(e) { return e.dataTransfer && Array.prototype.indexOf.call(e.dataTransfer.types || [], 'Files') !== -1; }
+    function setDrag(on) { var z = document.getElementById('materials'); if (z) z.classList.toggle('drag', on); dv.drag = on; }
+    document.addEventListener('dragenter', function (e) { if (zone(e) && hasFiles(e) && !dv.note) { e.preventDefault(); depth++; setDrag(true); } });
+    document.addEventListener('dragover', function (e) { if (zone(e) && hasFiles(e) && !dv.note) e.preventDefault(); });
+    document.addEventListener('dragleave', function (e) { if (zone(e)) { depth = Math.max(0, depth - 1); if (!depth) setDrag(false); } });
+    document.addEventListener('drop', function (e) {
+      if (!zone(e) || !hasFiles(e)) return;
+      e.preventDefault(); depth = 0; setDrag(false);
+      if (!dv.note) uploadMaterials(Array.prototype.slice.call(e.dataTransfer.files));
+    });
+  })();
 
   window.addEventListener('popstate', function () {
     if (ui.dreamId && !(history.state && history.state.dream)) { ui.dreamId = null; ui.confirm = null; render(); window.scrollTo(0, 0); }

@@ -385,3 +385,32 @@ p.empty { margin: 0; }
 .dcard .tabs { align-self: stretch; }
 .dcard .tabs .tab { flex: 1; }
 .dfoot { justify-content: space-between; }
+
+/* separate Steps and Materials cards, simpler file handling */
+.dsec-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.dsec-head h3 { margin: 0; font-family: var(--font-display); font-size: 1.3rem; letter-spacing: -0.01em; }
+.dream-steps { display: flex; flex-direction: column; gap: 12px; }
+.dropzone { position: relative; }
+.drop-cover { display: none; position: absolute; inset: 0; border-radius: inherit; background: var(--accent-soft); border: 2px dashed var(--accent); color: var(--accent-strong); font-weight: 600; align-items: center; justify-content: center; text-align: center; z-index: 2; }
+.dropzone.drag .drop-cover { display: flex; }
+.add-btn { display: inline-flex; align-items: center; gap: 6px; border: 0; background: var(--accent); color: var(--accent-ink); font-weight: 600; border-radius: 999px; padding: 8px 16px 8px 12px; min-height: 40px; }
+.add-btn svg { width: 18px; height: 18px; }
+.add-btn[aria-expanded="true"] { background: var(--accent-strong); }
+.add-menu { display: grid; gap: 8px; }
+.add-menu button { display: flex; align-items: center; gap: 14px; text-align: left; padding: 12px 14px; border: 1px solid var(--line); border-radius: 14px; background: var(--bg); min-height: 60px; }
+.add-menu .ai { width: 40px; height: 40px; border-radius: 12px; background: var(--accent-soft); color: var(--accent-strong); display: grid; place-items: center; flex: none; }
+.add-menu .ai svg { width: 22px; height: 22px; }
+.add-menu strong { display: block; }
+.add-menu small { color: var(--muted); font-size: .85rem; }
+.drop-empty { display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 28px 16px; border: 2px dashed var(--line); border-radius: 16px; background: transparent; color: var(--muted); text-align: center; }
+.drop-empty svg { width: 34px; height: 34px; color: var(--accent); }
+.drop-empty strong { color: var(--ink); }
+.drop-empty span { font-size: .9rem; }
+.drop-hint { text-align: center; font-size: .85rem; }
+.m-row { flex-direction: column; align-items: stretch; gap: 8px; }
+.m-line { display: flex; align-items: center; gap: 12px; min-width: 0; }
+.more { width: 40px; height: 40px; flex: none; border: 0; border-radius: 50%; background: transparent; color: var(--muted); display: grid; place-items: center; padding: 0; }
+.more svg { width: 20px; height: 20px; }
+.more:hover, .more[aria-expanded="true"] { background: var(--surface-2); color: var(--ink); }
+.m-menu { display: flex; gap: 8px; flex-wrap: wrap; padding-left: 52px; }
+.m-row.open { background: var(--bg); }
