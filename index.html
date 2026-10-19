@@ -12,7 +12,7 @@
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
 <link rel="icon" type="image/png" href="icons/icon-192.png">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=Figtree:wght@400;500;600&display=swap">
-<link rel="stylesheet" href="styles.css?v=11">
+<link rel="stylesheet" href="styles.css?v=13">
 </head>
 <body>
 
@@ -79,7 +79,7 @@
     <main id="dreams-view"></main>
   </div>
 
-  <p class="foot">Дані зберігаються в хмарі, тож однакові на всіх пристроях. <button type="button" class="link-btn" data-action="signout" style="min-height:0;padding:0">Вийти</button></p>
+  <p class="foot"><button type="button" class="link-btn" data-action="signout" style="min-height:0;padding:0">Вийти</button></p>
 </div>
 
 <div class="overlay" id="overlay" hidden>
@@ -146,6 +146,10 @@
         <button type="button" class="link-btn" id="d-clear" data-action="d-photo-clear" style="align-self:flex-start" hidden>Прибрати фото</button>
       </div>
       <div class="field">
+        <span class="lbl">Колір сторінки</span>
+        <div class="swatches" id="d-themes" role="radiogroup"></div>
+      </div>
+      <div class="field">
         <label for="d-why">Чому я цього хочу <span class="opt">(необов’язково)</span></label>
         <textarea id="d-why" maxlength="2000" rows="3" placeholder="Що це змінить, як я себе відчуватиму"></textarea>
       </div>
@@ -162,6 +166,6 @@
 
 <script src="vendor/supabase.js"></script>
 <script src="config.js"></script>
-<script src="app.js?v=11"></script>
+<script src="app.js?v=13"></script>
 </body>
 </html>
