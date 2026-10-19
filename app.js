@@ -179,13 +179,62 @@
     state.trash = trash;
   }
 
+  // before a re-render remember how the dream's progress and step rows looked, so the new state can glide there
+  function snapSteps() {
+    var ring = document.querySelector('.dprog .ring');
+    if (!ring || !ui.dreamId) return null;
+    var rows = {};
+    [].forEach.call(document.querySelectorAll('#steps-list .step'), function (r) { rows[r.getAttribute('data-sid')] = r.getBoundingClientRect().top; });
+    var bar = document.querySelector('.dream-steps .bar i');
+    var sp = ring.querySelector('span');
+    var db = document.querySelector('.td-done-toggle b');
+    return { p: parseFloat(ring.style.getPropertyValue('--p')) || 0, txt: sp ? parseInt(sp.textContent, 10) || 0 : 0, bar: bar ? bar.style.width : null, rows: rows, done: db ? parseInt(db.textContent, 10) || 0 : 0 };
+  }
+  function glideSteps(sn) {
+    if (!sn || reduceMotion) return;
+    var ring = document.querySelector('.dprog .ring');
+    if (!ring) return;
+    var np = parseFloat(ring.style.getPropertyValue('--p')) || 0;
+    if (np !== sn.p) {
+      var sp = ring.querySelector('span'), t0 = performance.now();
+      ring.style.transition = 'none'; ring.style.setProperty('--p', sn.p); void ring.offsetWidth;
+      ring.style.transition = '--p .8s cubic-bezier(.3, .8, .25, 1)'; ring.style.setProperty('--p', np);
+      if (sp) (function tick(now) {
+        var k = Math.min(1, (now - t0) / 800), e = 1 - Math.pow(1 - k, 3);
+        sp.textContent = Math.round(sn.txt + (np - sn.txt) * e) + '%';
+        if (k < 1) requestAnimationFrame(tick);
+      })(t0);
+    }
+    var bar = document.querySelector('.dream-steps .bar i');
+    if (bar && sn.bar !== null && sn.bar !== bar.style.width) {
+      var w = bar.style.width; bar.style.transition = 'none'; bar.style.width = sn.bar; void bar.offsetWidth;
+      bar.style.transition = 'width .7s cubic-bezier(.3, .8, .25, 1)'; bar.style.width = w;
+    }
+    // the remaining rows slide up into the gap instead of jumping
+    var list = document.getElementById('steps-list');
+    if (list) [].forEach.call(list.querySelectorAll('.step'), function (r) {
+      var old = sn.rows[r.getAttribute('data-sid')];
+      if (old === undefined) return;
+      var dy = old - r.getBoundingClientRect().top;
+      if (!dy) return;
+      r.style.animation = 'none'; r.style.transition = 'none'; r.style.transform = 'translateY(' + dy + 'px)'; void r.offsetWidth;
+      r.style.transition = 'transform .45s cubic-bezier(.25, .85, .25, 1)'; r.style.transform = '';
+      setTimeout(function () { r.style.transition = ''; r.style.animation = ''; }, 480);
+    });
+    var tg = document.querySelector('.td-done-toggle');
+    var db = tg && tg.querySelector('b');
+    if (db && (parseInt(db.textContent, 10) || 0) > sn.done) { tg.classList.remove('bump'); void tg.offsetWidth; tg.classList.add('bump'); }
+  }
+
   async function refresh() {
+    var sn = snapSteps();
     await fetchAll();
     // dreams load separately so a problem there never hides the plants
     try { await fetchDreams(); } catch (e) { console.error(e); }
     lastRefresh = Date.now();
     ui.loaded = true;
     render();
+    glideSteps(sn);
   }
 
   async function addWatering(plantId, date, blob) {

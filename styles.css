@@ -1376,3 +1376,17 @@ button.tc-photo { cursor: pointer; }
 .td-list.still .step.td { animation: none; }
 .step.td .grip { width: 28px; left: -8px; opacity: .35; touch-action: none; }
 @media (hover: hover) { .step.td:hover .grip { opacity: .8; } }
+
+/* smoother progress and a smaller "add step" row */
+.bar i { transition: width .7s cubic-bezier(.3, .8, .25, 1); }
+.step.td.completing { animation: rowAway .42s cubic-bezier(.4, 0, .7, .2) .1s forwards; }
+@keyframes rowAway { to { opacity: 0; transform: translateX(18px) scale(.97); } }
+.td-done-toggle.bump { animation: bump .5s cubic-bezier(.2, .9, .3, 1.4); }
+.td-done-toggle.bump b { color: var(--accent); }
+@keyframes bump { 0% { transform: scale(1); } 40% { transform: scale(1.1); } 100% { transform: scale(1); } }
+.td-new { min-height: 38px; padding: 2px 4px 2px 10px; gap: 8px; border-width: 1px; border-radius: 12px; align-self: flex-start; width: 100%; opacity: .85; }
+.td-new:focus-within { opacity: 1; }
+.td-new .td-plus, .td-new .td-plus svg { width: 18px; height: 18px; }
+.td-new input { padding: 6px 0; font-size: .92rem; }
+.td-new .td-go { width: 28px; height: 28px; }
+.td-new .td-go svg { width: 15px; height: 15px; }
