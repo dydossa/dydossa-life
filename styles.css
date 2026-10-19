@@ -1390,3 +1390,11 @@ button.tc-photo { cursor: pointer; }
 .td-new input { padding: 6px 0; font-size: .92rem; }
 .td-new .td-go { width: 28px; height: 28px; }
 .td-new .td-go svg { width: 15px; height: 15px; }
+
+/* iOS gives date inputs their own width; keep them inside the sheet and centred */
+.field input[type="date"], .sheet .field input[type="date"], .ddone input[type="date"] {
+  -webkit-appearance: none; appearance: none; display: block; width: 100%; min-width: 0; max-width: 100%; box-sizing: border-box; text-align: center; text-align-last: center;
+}
+.field input[type="date"]::-webkit-date-and-time-value { text-align: center; min-width: 0; margin: 0; }
+.field input[type="date"]::-webkit-calendar-picker-indicator { display: none; }
+.sheet .field, .sheet form { min-width: 0; }
