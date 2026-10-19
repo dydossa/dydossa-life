@@ -512,52 +512,118 @@
     return due ? 'Потрібен полив: ' + due + ' з ' + state.plants.length : 'Сьогодні поливати нічого';
   }
 
-  // home: a wheel of petals around a hub; ready sections open, the rest wait
+  // home: branches grow out of a glowing hub; ready sections open, the rest wait
   var WHEEL = [
     { a: -22.5, id: 'plants' }, { a: 22.5, id: 'dreams' }, { a: 67.5, id: 'piano' },
     { a: 112.5 }, { a: 157.5 }, { a: -157.5 }, { a: -112.5 }, { a: -67.5, id: 'ants' }
   ];
-  var WCOLOR = { plants: '#5BD38A', dreams: '#F2B04A' };
+  // one branch pointing up from the hub: a thin stem that opens into a wide rounded head
+  var PETAL_D = 'M -9 -108 Q 0 -98 9 -108 L 12 -200 C 13 -214 22 -228 34 -244 L 110 -335 C 136 -366 140 -408 108 -434 C 80 -455 40 -460 0 -460 C -40 -460 -80 -455 -108 -434 C -140 -408 -136 -366 -110 -335 L -34 -244 C -22 -228 -13 -214 -12 -200 Z';
+  var HEX_R = 378;
   function wp(r, deg) { var t = deg * Math.PI / 180; return [r * Math.sin(t), -r * Math.cos(t)]; }
-  function pt(c) { return c[0].toFixed(1) + ' ' + c[1].toFixed(1); }
-  var PETAL_LINES = [[0, -1, 1, 1], [0, 1, 1, -1], [0, -1, .55, 1], [0, 1, .55, -1], [.55, -1, 1, 0], [.55, 1, 1, 0], [.3, -1, .8, 1], [.3, 1, .8, -1], [.55, -1, .55, 1]];
-  function petalLocal(a, t, u) { var hw = 6 + 13 * t; return wp(78 + t * 172, a + u * hw); }
+  function f1(n) { return n.toFixed(1); }
   function inner(svg) { return svg.replace(/^<svg[^>]*>/, '').replace(/<\/svg>$/, ''); }
+  var reduceMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  function spin(dur, rev) {
+    return reduceMotion ? '' : '<animateTransform attributeName="transform" type="rotate" from="0 0 0" to="' + (rev ? -360 : 360) + ' 0 0" dur="' + dur + 's" repeatCount="indefinite"/>';
+  }
+  // the thin "crystal" lines inside every branch (clipped to its outline)
+  var GEO = (function () {
+    var pts = [], out = '', i;
+    for (i = 0; i < 12; i++) pts.push([150 * Math.sin(i * Math.PI / 6 + 0.26), -372 - 150 * Math.cos(i * Math.PI / 6 + 0.26)]);
+    for (i = 0; i < 12; i++) {
+      var p = pts[i], q = pts[(i + 5) % 12], r = pts[(i + 3) % 12];
+      out += '<line x1="' + f1(p[0]) + '" y1="' + f1(p[1]) + '" x2="' + f1(q[0]) + '" y2="' + f1(q[1]) + '"/>';
+      if (i % 2 === 0) out += '<line x1="' + f1(p[0]) + '" y1="' + f1(p[1]) + '" x2="' + f1(r[0]) + '" y2="' + f1(r[1]) + '"/>';
+    }
+    [[-12, -200, 90, -330], [12, -200, -90, -330], [-10, -150, 60, -290], [10, -150, -60, -290], [0, -110, 0, -230]].forEach(function (l) {
+      out += '<line x1="' + l[0] + '" y1="' + l[1] + '" x2="' + l[2] + '" y2="' + l[3] + '"/>';
+    });
+    return out;
+  })();
+  function hexPoints(r) {
+    var h = [];
+    for (var k = 0; k < 6; k++) h.push(f1(r * Math.sin(k * Math.PI / 3)) + ' ' + f1(-r * Math.cos(k * Math.PI / 3)));
+    return h.join(' ');
+  }
+
+  var wheelBuilt = false;
+  function buildWheel() {
+    var out = '<svg class="wheel intro" viewBox="-475 -475 950 950" role="group" aria-label="Розділи">' +
+      '<defs><clipPath id="pclip" clipPathUnits="userSpaceOnUse"><path d="' + PETAL_D + '"/></clipPath>' +
+      '<radialGradient id="hubglow"><stop class="hg1" offset="35%"/><stop class="hg2" offset="100%"/></radialGradient></defs>';
+    // a slowly turning star pattern behind everything
+    var star = '', i, a0, a1;
+    for (i = 0; i < 16; i++) {
+      a0 = wp(215, i * 22.5); a1 = wp(215, (i + 6) * 22.5);
+      star += '<line x1="' + f1(a0[0]) + '" y1="' + f1(a0[1]) + '" x2="' + f1(a1[0]) + '" y2="' + f1(a1[1]) + '"/>';
+      a0 = wp(135, i * 22.5 + 11.25); a1 = wp(135, (i + 5) * 22.5 + 11.25);
+      star += '<line x1="' + f1(a0[0]) + '" y1="' + f1(a0[1]) + '" x2="' + f1(a1[0]) + '" y2="' + f1(a1[1]) + '"/>';
+    }
+    out += '<g class="w-star">' + spin(240) + star + '</g>';
+    WHEEL.forEach(function (w, n) {
+      var sec = SECTIONS.filter(function (x) { return x.id === w.id; })[0];
+      var ready = !!(sec && sec.ready);
+      var cls = 'petal' + (sec ? ' s-' + sec.id : '') + (ready ? ' ready' : sec ? ' soon' : ' empty');
+      var attrs = sec
+        ? ' data-action="petal" data-section="' + sec.id + '" role="button" tabindex="0" aria-label="' + esc(sec.title) + (ready ? '' : ', скоро') + '"'
+        : ' aria-hidden="true"';
+      var g = '<g class="' + cls + '"' + attrs + ' transform="rotate(' + w.a + ')" style="--i:' + n + '"><g class="p-move">' +
+        '<path class="p-out" d="' + PETAL_D + '"/>' +
+        '<g class="p-geo" clip-path="url(#pclip)">' + GEO + '</g>';
+      if (sec) {
+        g += '<line class="p-flow" x1="0" y1="-112" x2="0" y2="-' + (HEX_R - 66) + '"/>' +
+          '<g transform="translate(0 -' + HEX_R + ') rotate(' + (-w.a) + ')"><g class="p-hex">' +
+          '<circle class="p-ripple" r="62"/>' +
+          '<polygon class="p-hexbg" points="' + hexPoints(62) + '"/>' +
+          '<polygon class="p-hexin" points="' + hexPoints(50) + '"/>' +
+          '<g class="p-icon" transform="translate(-24 -24) scale(2)" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">' + inner(sec.icon) + '</g>' +
+          (w.id === 'plants' ? '<g class="p-dot" hidden><circle class="p-dot-ring" cx="47" cy="-47" r="10"/><circle cx="47" cy="-47" r="10"/></g>' : '') +
+          '</g></g>' +
+          '<g transform="translate(0 -272) rotate(' + (-w.a) + ')"><text class="p-label" text-anchor="middle" y="8">' + esc(sec.title) + '</text></g>';
+      }
+      out += g + '</g></g>';
+    });
+    // the hub: soft glow, a ring of rays and the sprout
+    var rays = '';
+    for (i = 0; i < 90; i++) {
+      var len = 7 + ((i * 7) % 5) * 4;
+      a0 = wp(90, i * 4); a1 = wp(90 + len, i * 4);
+      rays += '<line x1="' + f1(a0[0]) + '" y1="' + f1(a0[1]) + '" x2="' + f1(a1[0]) + '" y2="' + f1(a1[1]) + '"/>';
+    }
+    out += '<circle class="hub-glow" r="175" fill="url(#hubglow)"/>' +
+      '<g class="hub-rays">' + spin(120, true) + rays + '</g>' +
+      '<circle class="hub" r="80"/><circle class="hub-in" r="70"/>' +
+      '<g transform="translate(-33 -33) scale(2.75)"><g class="hub-icon" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">' +
+      (reduceMotion ? '' : '<animateTransform attributeName="transform" type="rotate" values="-3 12 21;3 12 21;-3 12 21" dur="6s" repeatCount="indefinite" calcMode="spline" keySplines=".45 0 .55 1;.45 0 .55 1"/>') +
+      inner(ICON_PLANT) + '</g></g></svg>';
+    document.getElementById('wheel').innerHTML = out;
+    wheelBuilt = true;
+    setTimeout(function () { var wv = document.querySelector('.wheel'); if (wv) wv.classList.remove('intro'); }, 2200);
+  }
 
   function renderHome() {
+    if (!wheelBuilt) buildWheel();
     var due = ui.loaded && state.plants.some(function (p) { return status(p).due; });
-    var out = '<svg class="wheel" viewBox="-320 -320 640 640" role="group" aria-label="Розділи">' +
-      '<defs><radialGradient id="hubglow"><stop offset="55%" stop-color="#5BD38A" stop-opacity=".35"/><stop offset="100%" stop-color="#5BD38A" stop-opacity="0"/></radialGradient></defs>';
-    WHEEL.forEach(function (w) {
-      var sec = SECTIONS.filter(function (x) { return x.id === w.id; })[0];
-      var ready = !!(sec && sec.ready), color = WCOLOR[w.id] || null;
-      var cls = 'petal' + (ready ? ' ready' : sec ? ' soon' : ' empty');
-      var d = 'M' + pt(wp(78, w.a - 6)) + ' L' + pt(wp(250, w.a - 19)) + ' A250 250 0 0 1 ' + pt(wp(250, w.a + 19)) + ' L' + pt(wp(78, w.a + 6)) + ' Z';
-      var g = '<g class="' + cls + '"' + (color ? ' style="--c:' + color + '"' : '') +
-        (ready ? ' data-action="open-section" data-section="' + sec.id + '" role="button" tabindex="0" aria-label="' + esc(sec.title) + '"' : sec ? ' aria-disabled="true"' : ' aria-hidden="true"') + '>' +
-        '<path class="p-bg" d="' + d + '"/>';
-      PETAL_LINES.forEach(function (l) {
-        g += '<line class="p-line" x1="' + petalLocal(w.a, l[0], l[1])[0].toFixed(1) + '" y1="' + petalLocal(w.a, l[0], l[1])[1].toFixed(1) + '" x2="' + petalLocal(w.a, l[2], l[3])[0].toFixed(1) + '" y2="' + petalLocal(w.a, l[2], l[3])[1].toFixed(1) + '"/>';
-      });
-      if (sec) {
-        var c = wp(165, w.a), hex = [];
-        for (var k = 0; k < 6; k++) hex.push(pt([c[0] + 40 * Math.sin(k * Math.PI / 3), c[1] - 40 * Math.cos(k * Math.PI / 3)]));
-        g += '<polygon class="p-hex" points="' + hex.join(' ') + '"/>' +
-          '<g class="p-icon" transform="translate(' + (c[0] - 17).toFixed(1) + ' ' + (c[1] - 17).toFixed(1) + ') scale(1.42)" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">' + inner(sec.icon) + '</g>';
-        if (w.id === 'plants' && due) g += '<circle class="p-dot" cx="' + (c[0] + 30).toFixed(1) + '" cy="' + (c[1] - 30).toFixed(1) + '" r="8"/>';
-        var lp = wp(272, w.a), anchor = lp[0] < -40 ? 'end' : lp[0] > 40 ? 'start' : 'middle';
-        g += '<text class="p-label" x="' + lp[0].toFixed(1) + '" y="' + (lp[1] + 4).toFixed(1) + '" text-anchor="' + anchor + '">' + esc(sec.title) + '</text>';
-      }
-      out += g + '</g>';
-    });
-    var rays = '';
-    for (var i = 0; i < 72; i++) {
-      var len = 6 + ((i * 7) % 5) * 3, a0 = wp(68, i * 5), a1 = wp(68 + len, i * 5);
-      rays += '<line x1="' + a0[0].toFixed(1) + '" y1="' + a0[1].toFixed(1) + '" x2="' + a1[0].toFixed(1) + '" y2="' + a1[1].toFixed(1) + '"/>';
-    }
-    out += '<circle r="120" fill="url(#hubglow)" class="hub-glow"/><g class="hub-rays">' + rays + '</g>' +
-      '<circle class="hub" r="62"/><g class="hub-icon" transform="translate(-26 -26) scale(2.17)" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">' + inner(ICON_PLANT) + '</g></svg>';
-    document.getElementById('wheel').innerHTML = out;
+    var dot = document.querySelector('.wheel .p-dot');
+    if (dot) { if (due) dot.removeAttribute('hidden'); else dot.setAttribute('hidden', ''); }
+  }
+
+  function openSection(id) {
+    ui.screen = id; ui.tab = 'plants'; ui.dreamTab = 'list'; ui.dreamId = null; ui.confirm = null;
+    render(); window.scrollTo(0, 0);
+  }
+  // a tap: the branch lights up, a ripple runs over the icon, then the section opens
+  function petalTap(el) {
+    if (el.classList.contains('tap')) return;
+    var ready = el.classList.contains('ready');
+    el.classList.remove('nope');
+    void el.getBoundingClientRect();
+    el.classList.add(ready ? 'tap' : 'nope');
+    setTimeout(function () {
+      el.classList.remove('tap'); el.classList.remove('nope');
+      if (ready) openSection(el.getAttribute('data-section'));
+    }, ready ? (reduceMotion ? 60 : 460) : 650);
   }
 
   function applyScreen() {
@@ -1629,7 +1695,8 @@
     var act = el.getAttribute('data-action');
     var id = el.getAttribute('data-id');
 
-    if (act === 'open-section') { ui.screen = el.getAttribute('data-section'); ui.tab = 'plants'; ui.dreamTab = 'list'; ui.dreamId = null; ui.confirm = null; render(); window.scrollTo(0, 0); }
+    if (act === 'open-section') openSection(el.getAttribute('data-section'));
+    else if (act === 'petal') petalTap(el);
     else if (act === 'home') { closeSheet(); ui.screen = 'home'; ui.confirm = null; render(); window.scrollTo(0, 0); }
     else if (act === 'water') openSheet('water', id);
     else if (act === 'edit') openSheet('edit', id);
@@ -1762,6 +1829,31 @@
   document.addEventListener('keydown', function (e) {
     if ((e.key === 'Enter' || e.key === ' ') && e.target && e.target.classList && e.target.classList.contains('petal')) { e.preventDefault(); e.target.dispatchEvent(new MouseEvent('click', { bubbles: true })); }
   });
+
+
+  // home background: a few twinkling stars, two soft glows, an occasional shooting star
+  (function () {
+    var box = document.getElementById('bg-stars');
+    if (!box) return;
+    var seed = 7;
+    function rnd() { seed = (seed * 9301 + 49297) % 233280; return seed / 233280; }
+    var html = '';
+    for (var i = 0; i < 90; i++) {
+      var big = rnd() < 0.12, size = big ? 2 + rnd() * 1.2 : 0.8 + rnd() * 1.2;
+      html += '<i class="' + (big ? 'big' : '') + '" style="left:' + (rnd() * 100).toFixed(2) + '%;top:' + (rnd() * 100).toFixed(2) + '%;width:' + size.toFixed(1) + 'px;height:' + size.toFixed(1) + 'px;' +
+        '--d:' + (2.5 + rnd() * 5).toFixed(1) + 's;--dl:-' + (rnd() * 8).toFixed(1) + 's;--o:' + (0.35 + rnd() * 0.6).toFixed(2) + '"></i>';
+    }
+    box.innerHTML = html;
+    var bg = document.getElementById('bg');
+    if (reduceMotion || !window.matchMedia('(hover: hover) and (pointer: fine)').matches) return;
+    var raf = 0, px = 0, py = 0;
+    window.addEventListener('pointermove', function (e) {
+      if (ui.screen !== 'home') return;
+      px = e.clientX / window.innerWidth - 0.5; py = e.clientY / window.innerHeight - 0.5;
+      if (raf) return;
+      raf = requestAnimationFrame(function () { raf = 0; bg.style.setProperty('--px', px.toFixed(3)); bg.style.setProperty('--py', py.toFixed(3)); });
+    });
+  })();
 
   window.addEventListener('popstate', function () {
     if (ui.dreamId && !(history.state && history.state.dream)) { ui.dreamId = null; ui.confirm = null; render(); window.scrollTo(0, 0); }
