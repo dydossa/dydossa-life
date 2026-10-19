@@ -602,11 +602,102 @@
     setTimeout(function () { var wv = document.querySelector('.wheel'); if (wv) wv.classList.remove('intro'); }, 2200);
   }
 
+  /* the same sections as a list: big preview on the left, names on the right */
+  var HOME_VIEW_KEY = 'dydossa-home-view';
+  var homeView = 'wheel';
+  try { if (localStorage.getItem(HOME_VIEW_KEY) === 'list') homeView = 'list'; } catch (e) {}
+  var wheelEl = document.getElementById('wheel'), listEl = document.getElementById('hlist'), wheelName = document.querySelector('.wheel-name');
+  var viewBtn = document.getElementById('view-btn');
+  var I_LIST = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6h11M9 12h11M9 18h11"/><circle cx="4.5" cy="6" r="1"/><circle cx="4.5" cy="12" r="1"/><circle cx="4.5" cy="18" r="1"/></svg>';
+  var I_FLOWER = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="2.6"/><path d="M12 9.4V3.5M14.4 10.6l4.8-3.4M14.4 13.4l4.8 3.4M12 14.6v5.9M9.6 13.4l-4.8 3.4M9.6 10.6L4.8 7.2"/></svg>';
+  function hexSvg(sec, cls) {
+    return '<svg class="' + cls + '" viewBox="-66 -66 132 132" aria-hidden="true">' +
+      '<polygon class="p-hexbg" points="' + hexPoints(62) + '"/><polygon class="p-hexin" points="' + hexPoints(50) + '"/>' +
+      (sec ? '<g class="p-icon" transform="translate(-24 -24) scale(2)" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">' + inner(sec.icon) + '</g>' : '') + '</svg>';
+  }
+  function sectionLine(sec) {
+    if (!sec) return '';
+    if (!sec.ready) return 'Скоро';
+    return sec.id === 'plants' ? plantsLine() : sec.id === 'dreams' ? dreamsLine() : '';
+  }
+  function hubSvg(cls) {
+    return '<svg class="' + cls + '" viewBox="-60 -60 120 120" aria-hidden="true"><circle class="hub" r="50"/><circle class="hub-in" r="42"/>' +
+      '<g transform="translate(-21 -21) scale(1.75)"><g class="hub-icon" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">' + inner(ICON_PLANT) + '</g></g></svg>';
+  }
+  function setPreview(id) {
+    var box = document.getElementById('hl-preview');
+    if (!box || box.getAttribute('data-id') === (id || '')) return;
+    var sec = id ? SECTIONS.filter(function (x) { return x.id === id; })[0] : null;
+    box.setAttribute('data-id', id || '');
+    box.className = 'hl-preview' + (sec ? ' s-' + sec.id + (sec.ready ? ' ready' : ' soon') : ' home');
+    box.innerHTML = '<div class="hl-pv-in">' + (sec ? hexSvg(sec, 'hl-pv-hex') : hubSvg('hl-pv-hex')) +
+      '<strong class="hl-pv-name">' + esc(sec ? sec.title : 'dydossa life') + '</strong>' +
+      '<span class="hl-pv-sub">' + esc(sec ? sectionLine(sec) : '') + '</span></div>';
+  }
+  var listBuilt = false;
+  function buildList() {
+    var items = SECTIONS.map(function (sec) { return sec; }).concat([null, null, null, null]);
+    listEl.innerHTML = '<div class="hl-preview" id="hl-preview"></div>' +
+      '<ul class="hl-items">' +
+      '<li class="hl-head" style="--i:0">' + hubSvg('hl-hub') + '<strong>dydossa life</strong></li>' +
+      items.map(function (sec, n) {
+        if (!sec) return '<li style="--i:' + (n + 1) + '"><div class="hl-item empty">' + hexSvg(null, 'hl-hex') + '<span class="hl-name">soon…</span></div></li>';
+        return '<li style="--i:' + (n + 1) + '"><button type="button" class="hl-item s-' + sec.id + (sec.ready ? ' ready' : ' soon') + '" data-action="petal" data-section="' + sec.id + '">' +
+          hexSvg(sec, 'hl-hex') + '<span class="hl-name">' + esc(sec.title) + '</span>' +
+          (sec.id === 'plants' ? '<span class="hl-dot" hidden></span>' : '') + '</button></li>';
+      }).join('') + '</ul>';
+    listBuilt = true;
+    setPreview('');
+  }
+  listEl.addEventListener('pointerover', function (e) { var it = e.target.closest('.hl-item[data-section]'); if (it) setPreview(it.getAttribute('data-section')); });
+  listEl.addEventListener('focusin', function (e) { var it = e.target.closest('.hl-item[data-section]'); if (it) setPreview(it.getAttribute('data-section')); });
+  listEl.addEventListener('pointerleave', function () { setPreview(''); });
+
+  function paintViewBtn() {
+    viewBtn.innerHTML = homeView === 'wheel' ? I_LIST : I_FLOWER;
+    viewBtn.setAttribute('aria-label', homeView === 'wheel' ? 'Показати списком' : 'Показати квіткою');
+  }
+  function setHomeView(v) {
+    if (v === homeView) return;
+    homeView = v;
+    try { localStorage.setItem(HOME_VIEW_KEY, v); } catch (e) {}
+    paintViewBtn();
+    var out = v === 'list' ? wheelEl : listEl, inn = v === 'list' ? listEl : wheelEl;
+    if (v === 'list' && !listBuilt) buildList();
+    out.classList.add('leaving');
+    if (v === 'list') wheelName.classList.add('leaving');
+    setTimeout(function () {
+      out.hidden = true; out.classList.remove('leaving'); wheelName.classList.remove('leaving');
+      wheelName.hidden = v === 'list';
+      inn.hidden = false;
+      if (v === 'wheel') {
+        var wv = wheelEl.querySelector('.wheel');
+        if (wv) { wv.classList.remove('intro'); void wv.getBoundingClientRect(); wv.classList.add('intro'); setTimeout(function () { wv.classList.remove('intro'); }, 2200); }
+      } else {
+        listEl.classList.remove('entering'); void listEl.offsetWidth; listEl.classList.add('entering');
+        setTimeout(function () { listEl.classList.remove('entering'); }, 1400);
+        setPreview('');
+      }
+      renderHome();
+    }, reduceMotion ? 0 : 260);
+  }
+
   function renderHome() {
-    if (!wheelBuilt) buildWheel();
+    paintViewBtn();
     var due = ui.loaded && state.plants.some(function (p) { return status(p).due; });
-    var dot = document.querySelector('.wheel .p-dot');
-    if (dot) { if (due) dot.removeAttribute('hidden'); else dot.setAttribute('hidden', ''); }
+    if (homeView === 'wheel') {
+      if (!wheelBuilt) buildWheel();
+      wheelEl.hidden = false; listEl.hidden = true; wheelName.hidden = false;
+      var dot = document.querySelector('.wheel .p-dot');
+      if (dot) { if (due) dot.removeAttribute('hidden'); else dot.setAttribute('hidden', ''); }
+    } else {
+      if (!listBuilt) buildList();
+      listEl.hidden = false; wheelEl.hidden = true; wheelName.hidden = true;
+      var hd = listEl.querySelector('.hl-dot');
+      if (hd) hd.hidden = !due;
+      var box = document.getElementById('hl-preview');
+      if (box && box.getAttribute('data-id')) { var cur = box.getAttribute('data-id'); box.removeAttribute('data-id'); setPreview(cur); }
+    }
   }
 
   function openSection(id) {
@@ -637,6 +728,7 @@
     dreamsScreen.hidden = ui.screen !== 'dreams';
     homeBtn.hidden = home;
     trashBtn.hidden = home;
+    viewBtn.hidden = !home;
   }
 
   function render() {
@@ -1697,6 +1789,7 @@
 
     if (act === 'open-section') openSection(el.getAttribute('data-section'));
     else if (act === 'petal') petalTap(el);
+    else if (act === 'home-view') setHomeView(homeView === 'wheel' ? 'list' : 'wheel');
     else if (act === 'home') { closeSheet(); ui.screen = 'home'; ui.confirm = null; render(); window.scrollTo(0, 0); }
     else if (act === 'water') openSheet('water', id);
     else if (act === 'edit') openSheet('edit', id);

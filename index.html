@@ -12,7 +12,7 @@
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
 <link rel="icon" type="image/png" href="icons/icon-192.png">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=Figtree:wght@400;500;600&display=swap">
-<link rel="stylesheet" href="styles.css?v=30">
+<link rel="stylesheet" href="styles.css?v=31">
 </head>
 <body>
 <div class="bg" id="bg" aria-hidden="true"><div class="bg-glow g1"></div><div class="bg-glow g2"></div><div class="bg-stars" id="bg-stars"></div><span class="shoot"></span></div>
@@ -52,6 +52,7 @@
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/></svg>
         <span class="count" id="trash-count" hidden></span>
       </button>
+      <button type="button" class="icon-btn" id="view-btn" data-action="home-view" hidden></button>
       <button type="button" class="icon-btn" id="theme-btn" aria-label="Перемкнути світлу і темну тему"></button>
     </div>
   </header>
@@ -59,6 +60,7 @@
   <!-- Home: a list of sections. Only "plants" exists so far. -->
   <section class="home" id="home">
     <div class="wheel-wrap" id="wheel"></div>
+    <div class="hlist" id="hlist" hidden></div>
     <p class="wheel-name">dydossa life</p>
   </section>
 
@@ -163,6 +165,6 @@
 
 <script src="vendor/supabase.js"></script>
 <script src="config.js"></script>
-<script src="app.js?v=30"></script>
+<script src="app.js?v=31"></script>
 </body>
 </html>
