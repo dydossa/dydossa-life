@@ -1150,12 +1150,23 @@
       renderGallery();
       first = overlay.querySelector('[data-action="close"]');
     }
+    clearTimeout(closeT); overlay.classList.remove('closing'); sheetEl.style.transform = '';
     overlay.hidden = false;
+    document.documentElement.classList.add('sheet-open');
     sheetEl.scrollTop = 0;
-    setTimeout(function () { first.focus(); }, 0);
+    // on a phone a focused text field pops the keyboard over the sheet, so only focus it on a computer
+    if (touchUI && first && /^(INPUT|TEXTAREA)$/.test(first.tagName)) first = overlay.querySelector('[data-action="close"]') || first;
+    setTimeout(function () { try { first.focus({ preventScroll: true }); } catch (e) { first.focus(); } }, 0);
   }
+  var closeT = 0;
+  var touchUI = window.matchMedia('(hover: none)').matches;
   function closeSheet() {
-    overlay.hidden = true;
+    document.documentElement.classList.remove('sheet-open');
+    if (!reduceMotion && !overlay.hidden) {
+      overlay.classList.add('closing');
+      clearTimeout(closeT);
+      closeT = setTimeout(function () { overlay.classList.remove('closing'); overlay.hidden = true; sheetEl.style.transform = ''; }, 260);
+    } else overlay.hidden = true;
     ui.sheet = null;
     ui.galIdx = null;
     clearPhoto();
@@ -2322,6 +2333,61 @@
     if (ui.dreamId && !(history.state && history.state.dream)) { ui.confirm = null; dreamBack(); }
   });
 
+  // pull a sheet down to close it (only when it is scrolled to the top and the pull is mostly vertical)
+  (function () {
+    var t = null;
+    sheetEl.addEventListener('touchstart', function (e) {
+      if (e.touches.length !== 1 || overlay.classList.contains('cinema') && e.target.closest('.gv-stage')) { t = null; return; }
+      if (e.target.closest('input, textarea, select, [data-grip], .gv-strip, .steps.sorting')) { t = null; return; }
+      t = { y0: e.touches[0].clientY, x0: e.touches[0].clientX, dy: 0, on: false, t0: Date.now(), top: sheetEl.scrollTop <= 0 };
+    }, { passive: true });
+    sheetEl.addEventListener('touchmove', function (e) {
+      if (!t) return;
+      var dy = e.touches[0].clientY - t.y0, dx = e.touches[0].clientX - t.x0;
+      if (!t.on) {
+        if (Math.abs(dy) < 8 && Math.abs(dx) < 8) return;
+        if (!t.top || dy <= 0 || Math.abs(dx) > Math.abs(dy) || sheetEl.scrollTop > 0) { t = null; return; }
+        t.on = true; sheetEl.classList.add('pulling');
+      }
+      e.preventDefault();
+      t.dy = Math.max(0, dy);
+      sheetEl.style.transform = 'translateY(' + t.dy + 'px)';
+      overlay.style.opacity = String(Math.max(.35, 1 - t.dy / 600));
+    }, { passive: false });
+    function end() {
+      if (!t) return;
+      var d = t; t = null;
+      if (!d.on) return;
+      sheetEl.classList.remove('pulling');
+      var fast = d.dy > 50 && d.dy / Math.max(1, Date.now() - d.t0) > 0.6;
+      overlay.style.opacity = '';
+      if (d.dy > 120 || fast) { sheetEl.style.transform = 'translateY(' + d.dy + 'px)'; closeSheet(); return; }
+      sheetEl.classList.add('snapback'); sheetEl.style.transform = '';
+      setTimeout(function () { sheetEl.classList.remove('snapback'); }, 320);
+    }
+    sheetEl.addEventListener('touchend', end);
+    sheetEl.addEventListener('touchcancel', end);
+  })();
+
+  // the top bar turns to glass once the page is scrolled
+  (function () {
+    var on = false, raf = 0;
+    window.addEventListener('scroll', function () {
+      if (raf) return;
+      raf = requestAnimationFrame(function () {
+        raf = 0;
+        var now = window.scrollY > 6;
+        if (now !== on) { on = now; document.documentElement.classList.toggle('scrolled', on); }
+      });
+    }, { passive: true });
+  })();
+
+  // phone status bar follows the theme
+  function paintStatusBar() {
+    var m = document.querySelector('meta[name="theme-color"]');
+    if (m) m.setAttribute('content', isDark() ? '#070818' : '#F4F1EA');
+  }
+
   /* ---------- theme ---------- */
   var root = document.documentElement;
   var themeBtn = document.getElementById('theme-btn');
@@ -2331,7 +2397,7 @@
     if (a) return a === 'dark';
     return mq.matches;
   }
-  function paintThemeBtn() { themeBtn.innerHTML = isDark() ? SUN : MOON; }
+  function paintThemeBtn() { themeBtn.innerHTML = isDark() ? SUN : MOON; paintStatusBar(); }
   try {
     var saved = localStorage.getItem(THEME_KEY);
     if (saved === 'dark' || saved === 'light') root.setAttribute('data-theme', saved);

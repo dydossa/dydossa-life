@@ -1398,3 +1398,54 @@ button.tc-photo { cursor: pointer; }
 .field input[type="date"]::-webkit-date-and-time-value { text-align: center; min-width: 0; margin: 0; }
 .field input[type="date"]::-webkit-calendar-picker-indicator { display: none; }
 .sheet .field, .sheet form { min-width: 0; }
+
+/* ===== phone comfort ===== */
+html { -webkit-tap-highlight-color: transparent; -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
+button, a, label, [role="button"], .chip { touch-action: manipulation; }
+@media (hover: none) {
+  /* iOS zooms into any field under 16px — keep them all at 16 */
+  input, textarea, select, .td-new input, .sheet .field input, .sheet .field textarea { font-size: 16px !important; }
+  /* bigger targets for fingers */
+  .day-chips .chip { min-height: 40px; padding: 8px 16px; }
+  .td-x { height: 40px; min-width: 40px; }
+  .td-done-toggle { min-height: 40px; }
+  .step.td .check::after, .check.sm::after { content: ""; position: absolute; inset: -9px; }
+  .check.sm { position: relative; }
+  .title-btn { padding-block: 6px; margin-block: -6px; }
+  /* press feedback instead of hover */
+  .primary, .icon-btn, .chip, .ico, .td-go, .dprog-go, .add-card, .td-done-toggle, .tab, .dmake, .danger, .gv-nav, .home-edit, .hl-item, .td-main, .pcard .thumb, .dream .thumb, button.brand {
+    transition: transform .18s cubic-bezier(.2, .9, .3, 1.4), filter .18s, opacity .18s;
+  }
+  .primary:active, .icon-btn:active, .chip:active, .ico:active, .td-go:active, .dprog-go:active, .add-card:active, .td-done-toggle:active, .tab:active, .dmake:active, .danger:active, .gv-nav:active, .home-edit:active, button.brand:active { transform: scale(.94); transition-duration: .08s; }
+  .hl-item:active, .pcard .thumb:active, .dream .thumb:active { transform: scale(.98); transition-duration: .08s; }
+  .td-main:active { opacity: .6; transition-duration: .05s; }
+}
+
+/* the page behind an open sheet stays still */
+html.sheet-open, html.sheet-open body { overflow: hidden; }
+.sheet { overscroll-behavior: contain; -webkit-overflow-scrolling: touch; }
+.overlay { height: 100%; height: 100dvh; }
+.sheet { max-height: 92dvh; }
+
+/* sheets slide away when closed and can be pulled down with a finger */
+.overlay.closing { animation: fadeOut .26s ease-in forwards; pointer-events: none; }
+.overlay.closing .sheet { animation: sheetOut .26s cubic-bezier(.5, 0, .75, 0) forwards !important; }
+@keyframes fadeOut { to { opacity: 0; } }
+@keyframes sheetOut { to { transform: translateY(105%); } }
+.sheet.pulling { transition: none !important; animation: none !important; }
+.sheet.snapback { transition: transform .3s cubic-bezier(.2, .9, .25, 1) !important; }
+@media (hover: none) {
+  .overlay:not(.cinema) .sheet { position: relative; padding-top: 26px; }
+  .overlay:not(.cinema) .sheet::before { content: ""; position: absolute; top: 9px; left: 50%; width: 40px; height: 5px; margin-left: -20px; border-radius: 99px; background: color-mix(in srgb, var(--ink) 22%, transparent); }
+}
+
+/* phone: the top bar stays reachable and turns to frosted glass once you scroll */
+@media (max-width: 760px) {
+  .top { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 15;
+    margin: -8px calc(-1 * max(16px, env(safe-area-inset-left, 0px))); padding: 8px max(16px, env(safe-area-inset-left, 0px));
+    transition: background .3s, box-shadow .3s, -webkit-backdrop-filter .3s, backdrop-filter .3s; }
+  html.scrolled .top { background: color-mix(in srgb, var(--bg) 72%, transparent); -webkit-backdrop-filter: blur(16px) saturate(1.4); backdrop-filter: blur(16px) saturate(1.4);
+    box-shadow: 0 1px 0 color-mix(in srgb, var(--ink) 8%, transparent), 0 calc(-1 * env(safe-area-inset-top, 0px)) 0 0 color-mix(in srgb, var(--bg) 72%, transparent); }
+  html.scrolled .top h1 { transform-origin: left center; }
+}
+@media (hover: none) { button.brand { padding-block: 7px; margin-block: -7px; } }
