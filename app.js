@@ -231,42 +231,46 @@
   var summary = document.getElementById('summary');
 
   function renderSummary() {
-    var d = new Intl.DateTimeFormat('uk-UA', { weekday: 'long', day: 'numeric', month: 'long' }).format(new Date());
     var due = state.plants.filter(function (p) { return status(p).due; }).length;
     var tail;
-    if (!state.plants.length) tail = 'Додайте першу рослину.';
-    else if (due === 0) tail = 'Сьогодні поливати нічого.';
-    else tail = 'Потрібен полив: <span class="alert">' + due + ' з ' + state.plants.length + '</span>.';
-    summary.innerHTML = '<strong>' + esc(d) + '</strong>. ' + tail;
+    if (!state.plants.length) tail = 'Додайте першу рослину';
+    else if (due === 0) tail = state.plants.length + ' ' + plural(state.plants.length, 'рослина', 'рослини', 'рослин') + ' · сьогодні поливати нічого';
+    else tail = 'Потрібен полив: <span class="alert">' + due + ' з ' + state.plants.length + '</span>';
+    summary.innerHTML = tail;
+    var hx = document.getElementById('plants-hex');
+    if (hx && !hx.firstChild) hx.innerHTML = hexSvg(SECTIONS[0], 'hero-hex');
+    var hero = document.getElementById('plants-hero');
+    if (hero) hero.classList.toggle('due', due > 0);
   }
 
-  function plantCard(p) {
+  function plantCard(p, i) {
     var s = status(p);
     var photos = photosOf(p);
     var cover = photos.length ? photos[0].photo : null;
-    return '<article class="plant">' +
+    return '<article class="plant pcard' + (s.warn ? ' is-due' : '') + '" style="--i:' + (i || 0) + '">' +
       '<button type="button" class="thumb" data-action="gallery" data-id="' + p.id + '" aria-label="Відкрити галерею: ' + esc(p.name) + '">' +
-        (cover ? '<img src="' + esc(cover) + '" alt="">' : LEAF) +
+        (cover ? '<img src="' + esc(cover) + '" alt="">' : hexSvg(SECTIONS[0], 'thumb-hex')) +
         (photos.length ? '<span class="badge">' + photos.length + ' фото</span>' : '') +
       '</button>' +
       '<div class="plant-body">' +
         '<div class="plant-title"><h3><button type="button" class="title-btn" data-action="gallery" data-id="' + p.id + '">' + esc(p.name) + '</button></h3>' +
-        '<button type="button" class="link-btn" data-action="edit" data-id="' + p.id + '">Змінити</button></div>' +
+        '<button type="button" class="ico" data-action="edit" data-id="' + p.id + '" aria-label="Змінити: ' + esc(p.name) + '">' + I_EDIT + '</button></div>' +
         '<p class="meta">Раз на ' + p.interval + ' дн. · ' + esc(s.meta) + '</p>' +
-        '<span class="pill' + (s.warn ? ' warn' : '') + '">' + esc(s.text) + '</span>' +
+        '<span class="pill' + (s.warn ? ' warn' : '') + '">' + (s.warn ? '<i class="pdot"></i>' : '') + esc(s.text) + '</span>' +
         '<div class="bar' + (s.warn ? ' warn' : '') + '" aria-hidden="true"><i style="width:' + Math.round(s.frac * 100) + '%"></i></div>' +
         '<button type="button" class="primary" data-action="water" data-id="' + p.id + '">' + DROP + 'Полив</button>' +
       '</div></article>';
   }
 
   function renderPlants() {
-    var html = '<div class="section-head"><h2>Рослини</h2></div><div style="height:12px"></div>';
+    var html = '';
     if (!state.plants.length) {
       html += '<div class="empty">Рослин поки немає.</div><div style="height:16px"></div>';
     } else {
-      html += '<div class="grid">' + state.plants.map(plantCard).join('') + '</div><div style="height:16px"></div>';
+      html += '<div class="grid">' + state.plants.map(plantCard).join('') +
+        '<button type="button" class="add-card add-tile" data-action="add" style="--i:' + state.plants.length + '">' + I_PLUS + 'Додати рослину</button></div>';
     }
-    html += '<button type="button" class="add-card" style="width:100%" data-action="add">+ Додати рослину</button>';
+    if (!state.plants.length) html += '<button type="button" class="add-card" style="width:100%" data-action="add">' + I_PLUS + 'Додати рослину</button>';
     view.innerHTML = html;
   }
 
@@ -706,6 +710,8 @@
 
   function openSection(id) {
     ui.screen = id; ui.tab = 'plants'; ui.dreamTab = 'list'; ui.dreamId = null; ui.confirm = null;
+    var scr = document.getElementById(id + '-screen');
+    if (scr && !reduceMotion) { scr.classList.remove('entering'); void scr.offsetWidth; scr.classList.add('entering'); setTimeout(function () { scr.classList.remove('entering'); }, 1600); }
     render(); window.scrollTo(0, 0);
   }
   // a tap: the branch lights up, a ripple runs over the icon, then the section opens
@@ -726,6 +732,7 @@
     homeEl.hidden = !home;
     document.body.classList.toggle('on-home', home);
     document.body.classList.toggle('on-dreams', ui.screen === 'dreams');
+    document.body.classList.toggle('on-plants', ui.screen === 'plants');
     var cd = ui.screen === 'dreams' && ui.dreamId ? findDream(ui.dreamId) : null;
     paintTheme(document.body, cd);
     plantsScreen.hidden = ui.screen !== 'plants';
@@ -1945,7 +1952,7 @@
     if (reduceMotion || !window.matchMedia('(hover: hover) and (pointer: fine)').matches) return;
     var raf = 0, px = 0, py = 0;
     window.addEventListener('pointermove', function (e) {
-      if (ui.screen !== 'home') return;
+      if (ui.screen === 'dreams') return;
       px = e.clientX / window.innerWidth - 0.5; py = e.clientY / window.innerHeight - 0.5;
       if (raf) return;
       raf = requestAnimationFrame(function () { raf = 0; bg.style.setProperty('--px', px.toFixed(3)); bg.style.setProperty('--py', py.toFixed(3)); });
