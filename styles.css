@@ -866,3 +866,13 @@ body.on-home .wheel .hx.soon .hx-in { opacity: .8; }
 ::view-transition-old(root), ::view-transition-new(root) { animation: none; mix-blend-mode: normal; }
 ::view-transition-new(root) { z-index: 2; }
 @media (prefers-reduced-motion: reduce) { .bg::before, .e-arc { animation: none !important; } }
+
+/* flower badges in the same outline style as the list */
+.hx-frame { fill: var(--hub-bg); stroke-width: 3.5; }
+.hx-fill { fill: color-mix(in srgb, var(--c) 13%, transparent); stroke: color-mix(in srgb, var(--c) 45%, transparent); stroke-width: 1.5; stroke-linejoin: round; }
+.hx-icon { color: var(--c); }
+.hx-name { fill: var(--c); }
+.hx.empty .hx-frame { fill: none; }
+.emblem .emb-ring { stroke-width: 4; }
+.emb-icon { color: var(--hub); }
+.emblem { filter: drop-shadow(0 0 26px color-mix(in srgb, var(--hub) 45%, transparent)); }

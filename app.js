@@ -579,7 +579,7 @@
         '<polygon class="hx-frame" points="' + hexPoints(104) + '"/>';
       if (sec) {
         out += '<polygon class="hx-fill" points="' + hexPoints(86) + '"/>' +
-          '<g class="hx-icon-w"><g class="hx-icon" transform="translate(-43 -43) scale(3.6)" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round">' + inner(sec.icon) + '</g></g>' +
+          '<g class="hx-icon-w"><g class="hx-icon" transform="translate(-34 -34) scale(2.85)" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">' + inner(sec.icon) + '</g></g>' +
           '<text class="hx-name" y="58" text-anchor="middle">' + esc(sec.title) + '</text>' +
           (w.id === 'plants' ? '<g class="p-dot" hidden><circle class="p-dot-ring" cx="80" cy="-72" r="12"/><circle cx="80" cy="-72" r="12"/></g>' : '');
       } else {
@@ -594,8 +594,8 @@
     out += '<g class="e-arcs">' + arcs + '</g>';
     // the emblem: a two-tone disc with the sprout cut out of it
     out += '<g class="emblem"><g class="emb-in">' +
-      '<circle class="emb-top" r="140" clip-path="url(#ctop)"/><circle class="emb-bot" r="140" clip-path="url(#cbot)"/>' +
-      '<g transform="translate(-90 -96) scale(7.5)"><g class="emb-icon" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round">' +
+      '<circle class="hub emb-ring" r="140"/><circle class="hub-in" r="122"/>' +
+      '<g transform="translate(-66 -70) scale(5.5)"><g class="emb-icon" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">' +
       (reduceMotion ? '' : '<animateTransform attributeName="transform" type="rotate" values="-2.5 12 21;2.5 12 21;-2.5 12 21" dur="7s" repeatCount="indefinite" calcMode="spline" keySplines=".45 0 .55 1;.45 0 .55 1"/>') +
       inner(ICON_PLANT) + '</g></g>' +
 
