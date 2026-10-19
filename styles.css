@@ -572,3 +572,7 @@ body.on-dreams .grid { grid-template-columns: 1fr; }
 .ddone .date-row { margin-left: 0; }
 .ddone .ico { color: inherit; }
 .ddone .ico:hover { background: rgba(255,255,255,.2); }
+
+[data-dt="photo"] { --t: var(--tl); }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) [data-dt="photo"] { --t: var(--td); } }
+:root[data-theme="dark"] [data-dt="photo"] { --t: var(--td); }
