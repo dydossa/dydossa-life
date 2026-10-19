@@ -563,3 +563,12 @@ form.td-add { flex-direction: row; align-items: center; }
 body.on-dreams .grid { grid-template-columns: 1fr; }
 @media (min-width: 560px) { body.on-dreams .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @media (min-width: 900px) { body.on-dreams .grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+
+.td-go { width: 36px; height: 36px; flex: none; border-radius: 50%; border: 0; background: var(--accent); color: var(--accent-ink); display: grid; place-items: center; padding: 0; cursor: pointer; }
+.td-go svg { width: 18px; height: 18px; }
+.date-row { display: inline-flex; align-items: center; gap: 4px; margin-left: auto; }
+.m-tile .m-menu { inset: 0 auto auto 0; width: 100%; box-sizing: border-box; padding: 48px 10px 10px; justify-content: flex-start; }
+
+.ddone .date-row { margin-left: 0; }
+.ddone .ico { color: inherit; }
+.ddone .ico:hover { background: rgba(255,255,255,.2); }

@@ -901,7 +901,7 @@
     if (old && old.path && (newPath || photo.remove)) await sb.storage.from(BUCKET).remove([old.path]);
   }
   function setStatus(d, st) {
-    return updateDream(d.id, { status: st, done_on: st === 'done' ? (d.doneOn || iso(today())) : null });
+    return updateDream(d.id, { status: st, done_on: st === 'done' ? (d.doneOn || null) : null });
   }
   function saveSteps(d, steps) {
     var patch = { steps: steps };
@@ -1208,7 +1208,8 @@
             '<button type="button" class="ico" data-action="sub-del" data-step="' + esc(st.id) + '" data-sub="' + esc(x.id) + '" aria-label="Прибрати">' + I_X + '</button></li>';
         }).join('') + '</ul>' +
         '<form class="sub-form td-add" data-step="' + esc(st.id) + '"><span class="td-plus">' + I_PLUS + '</span>' +
-        '<input type="text" id="sub-input" maxlength="140" placeholder="Додати підкрок" autocomplete="off" aria-label="Додати підкрок"></form></div>' +
+        '<input type="text" id="sub-input" maxlength="140" placeholder="Додати підкрок" autocomplete="off" enterkeyhint="done" aria-label="Додати підкрок">' +
+        '<button type="submit" class="td-go" aria-label="Додати">' + CHECK + '</button></form></div>' +
       '<div class="td-card"><textarea id="step-note" rows="4" maxlength="2000" placeholder="Додати нотатку" aria-label="Нотатка">' + esc(st.n || '') + '</textarea></div>' +
       '<button type="button" class="danger" data-action="step-del" data-step="' + esc(st.id) + '">' + (ui.confirm === key ? 'Точно видалити?' : 'Видалити крок') + '</button>';
     Object.keys(keep).forEach(function (k) { var el = document.getElementById(k); if (el) el.value = keep[k]; });
@@ -1252,7 +1253,8 @@
     if (d.why) html += '<blockquote class="dwhy"><span>Чому я цього хочу</span><p>' + esc(d.why) + '</p></blockquote>';
     if (d.status === 'done') {
       html += '<div class="ddone">' + STAR + '<div class="ddone-text"><strong>Мрія здійснилась!</strong>' +
-        '<label for="done-date">Коли це сталося</label><input type="date" id="done-date" value="' + esc(d.doneOn || iso(today())) + '" max="' + iso(today()) + '"></div>' +
+        '<label for="done-date">Дата <span class="opt">(за бажанням)</span></label><span class="date-row"><input type="date" id="done-date" value="' + esc(d.doneOn || '') + '" max="' + iso(today()) + '">' +
+        (d.doneOn ? '<button type="button" class="ico" data-action="done-date-clear" aria-label="Прибрати дату">' + I_X + '</button>' : '') + '</span></div>' +
         '<button type="button" class="link-btn" data-action="dream-undone">Ще не здійснилась</button></div>';
     } else {
       html += '<button type="button" class="primary dmake" data-action="dream-done">' + STAR + 'Мрія здійснилась</button>';
@@ -1294,12 +1296,7 @@
   document.addEventListener('submit', function (e) {
     if (e.target && e.target.classList && e.target.classList.contains('sub-form')) {
       e.preventDefault();
-      var dd = curDream(), inp = document.getElementById('sub-input'), tt = inp && inp.value.trim();
-      if (!dd || !tt || ui.busy) return;
-      var sid2 = e.target.getAttribute('data-step');
-      run(function () { return saveSteps(dd, mapStep(dd, sid2, function (x) { return { id: x.id, t: x.t, d: x.d, n: x.n, s: (x.s || []).concat([{ id: uuid(), t: tt, d: false }]) }; })); }).then(function (ok) {
-        var i3 = document.getElementById('sub-input'); if (ok && i3) { i3.value = ''; i3.focus(); }
-      });
+      addSub(e.target.getAttribute('data-step'), true);
       return;
     }
     var id = e.target && e.target.id;
@@ -1335,9 +1332,20 @@
     }
   });
 
+  function addSub(sid, refocus) {
+    var dd = curDream(), inp = document.getElementById('sub-input'), tt = inp && inp.value.trim();
+    if (!dd || !tt || ui.busy) return;
+    inp.value = '';
+    run(function () { return saveSteps(dd, mapStep(dd, sid, function (x) { return { id: x.id, t: x.t, d: x.d, n: x.n, s: (x.s || []).concat([{ id: uuid(), t: tt, d: false }]) }; })); }).then(function (ok) {
+      var i3 = document.getElementById('sub-input');
+      if (!ok && i3) i3.value = tt;
+      else if (ok && i3 && refocus) i3.focus();
+    });
+  }
   function mapStep(d, sid, fn) { return d.steps.map(function (x) { return x.id === sid ? fn(x) : x; }); }
   document.addEventListener('change', function (e) {
     var tid = e.target && e.target.id;
+    if (tid === 'sub-input' && ui.sheet && ui.sheet.type === 'step') { addSub(ui.sheet.id, false); return; }
     if (e.target && e.target.classList && e.target.classList.contains('sub-t')) {
       var d3 = curDream(), ps3 = e.target.getAttribute('data-step'), sb3 = e.target.getAttribute('data-sub'), v3 = e.target.value.trim();
       if (!d3 || !v3) return;
@@ -1357,8 +1365,9 @@
     }
     if (!e.target || e.target.id !== 'done-date') return;
     var d = curDream(), v = e.target.value;
-    if (!d || !v || v > iso(today())) return;
-    run(function () { return updateDream(d.id, { done_on: v }); }, 'Дату збережено');
+    if (!d || v > iso(today())) return;
+    if ((d.doneOn || '') === v) return;
+    run(function () { return updateDream(d.id, { done_on: v || null }); });
   });
 
   // clicks that belong to dreams; returns true when handled
@@ -1393,8 +1402,9 @@
     if (!d) return false;
     switch (act) {
       case 'dream-done':
-        run(function () { return setStatus(d, 'done'); }, 'Вітаю! Можна вибрати дату, коли це сталося.');
+        run(function () { return setStatus(d, 'done'); }, 'Вітаю!');
         return true;
+      case 'done-date-clear': run(function () { return updateDream(d.id, { done_on: null }); }); return true;
       case 'dream-undone':
         run(function () { return setStatus(d, stepsDone(d) ? 'progress' : 'dream'); });
         return true;
