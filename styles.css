@@ -317,3 +317,37 @@ form.step-add { flex-direction: row; gap: 8px; }
 .step-add input { flex: 1; min-width: 0; border: 1px solid var(--line); background: var(--bg); border-radius: 12px; padding: 10px 12px; min-height: 44px; }
 .field textarea { border: 1px solid var(--line); background: var(--bg); border-radius: 12px; padding: 11px 12px; width: 100%; resize: vertical; font: inherit; color: inherit; }
 .opt { font-weight: 400; color: var(--muted); }
+
+/* dream detail: tabs for steps and materials */
+#dream-detail .tabs { align-self: stretch; }
+#dream-detail .tabs .tab { flex: 1; }
+.d-pane { display: flex; flex-direction: column; gap: 12px; min-height: 120px; }
+.dream-done { flex-wrap: wrap; }
+.dream-done label { font-weight: 600; }
+.dream-done input[type="date"] { margin-left: auto; border: 1px solid var(--line); background: var(--surface); color: var(--ink); border-radius: 10px; padding: 6px 10px; min-height: 40px; }
+.crumbs { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 6px; color: var(--muted); font-size: .95rem; }
+.crumb { border: 0; background: transparent; padding: 4px 2px; color: var(--accent-strong); font-weight: 600; text-decoration: underline; text-underline-offset: 3px; }
+.crumb[aria-current="page"] { color: var(--ink); text-decoration: none; }
+.m-tools { display: flex; gap: 8px; flex-wrap: wrap; }
+.m-tools .secondary { display: inline-flex; align-items: center; gap: 8px; flex: 1 1 100px; justify-content: center; }
+.m-tools svg { width: 18px; height: 18px; }
+.m-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; border: 1px solid var(--line); border-radius: 14px; overflow: hidden; background: var(--surface); }
+.m-row { display: flex; align-items: center; gap: 12px; padding: 10px 12px; border-top: 1px solid var(--line); min-width: 0; }
+.m-row:first-child { border-top: 0; }
+.m-icon { width: 40px; height: 40px; border-radius: 10px; flex: none; display: grid; place-items: center; background: var(--surface-2); color: var(--muted); overflow: hidden; position: relative; }
+.m-icon.folder { background: var(--accent-soft); color: var(--accent-strong); }
+.m-icon svg { width: 22px; height: 22px; }
+.m-icon img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.m-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; text-align: left; border: 0; background: transparent; padding: 2px 0; color: inherit; text-decoration: none; }
+.m-main strong { font-weight: 600; overflow-wrap: anywhere; }
+.m-main .meta { font-size: .85rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+form.m-main { flex-direction: row; }
+.m-acts { display: flex; gap: 6px; flex: none; }
+.m-acts .link-btn { font-size: .88rem; }
+.note-form { gap: 12px; }
+.note-form .back { display: inline-flex; align-items: center; gap: 4px; align-self: flex-start; text-decoration: none; color: var(--accent-strong); font-weight: 600; }
+.note-form .back svg { width: 18px; height: 18px; }
+.note-form input[type="text"] { border: 1px solid var(--line); background: var(--bg); border-radius: 12px; padding: 11px 12px; min-height: 46px; font-family: var(--font-display); font-size: 1.1rem; font-weight: 600; }
+.note-form textarea { border: 1px solid var(--line); background: var(--bg); border-radius: 12px; padding: 12px; min-height: 240px; resize: vertical; line-height: 1.5; }
+p.empty { margin: 0; }
+@media (max-width: 420px) { .m-acts { flex-direction: column; gap: 0; align-items: flex-end; } }
