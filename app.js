@@ -31,8 +31,35 @@
   var state = { plants: [], trash: [], dreams: [], dreamTrash: [] };
   var ui = { screen: 'home', loaded: false, tab: 'plants', dreamTab: 'list', dreamFilter: 'all', dreamId: null, sheet: null, photo: null, photoUrl: null, confirm: null, statIds: null, range: 90, galIdx: null, busy: false };
   var session = null;
-  var urlCache = {};
-  var urlCacheAt = 0;
+  // signed photo/file links live 6 hours; keep them across reloads so the browser can reuse its cached images
+  var URLS_KEY = 'dydossa-life-urls';
+  var URL_TTL = 6 * 3600 * 1000, URL_MARGIN = 40 * 60 * 1000;
+  var urlCache = {}, fileUrls = {}, urlExp = {};
+  (function () {
+    try {
+      var saved = JSON.parse(localStorage.getItem(URLS_KEY) || '{}'), now = Date.now();
+      Object.keys(saved).forEach(function (k) {
+        var v = saved[k];
+        if (!v || v[2] < now + URL_MARGIN) return;
+        if (v[0] === 'f') fileUrls[k] = v[1]; else urlCache[k] = v[1];
+        urlExp[k] = v[2];
+      });
+    } catch (e) {}
+  })();
+  var saveUrlsT = 0;
+  function saveUrls() {
+    clearTimeout(saveUrlsT);
+    saveUrlsT = setTimeout(function () {
+      var out = {}, now = Date.now();
+      Object.keys(urlExp).forEach(function (k) {
+        if (urlExp[k] < now + URL_MARGIN) return;
+        if (urlCache[k]) out[k] = ['p', urlCache[k], urlExp[k]];
+        else if (fileUrls[k]) out[k] = ['f', fileUrls[k], urlExp[k]];
+      });
+      try { localStorage.setItem(URLS_KEY, JSON.stringify(out)); } catch (e) {}
+    }, 400);
+  }
+  function fresh(k) { return urlExp[k] && urlExp[k] > Date.now() + URL_MARGIN; }
   var lastRefresh = 0;
 
   function uuid() {
@@ -80,12 +107,13 @@
 
   /* ---------- talking to Supabase ---------- */
   async function signPaths(paths) {
-    if (!urlCacheAt || Date.now() - urlCacheAt > 5 * 3600 * 1000) { urlCache = {}; urlCacheAt = Date.now(); }
-    var need = paths.filter(function (p) { return !urlCache[p]; });
+    var need = paths.filter(function (p) { return !urlCache[p] || !fresh(p); });
     if (!need.length) return;
+    var at = Date.now();
     var r = await sb.storage.from(BUCKET).createSignedUrls(need, 6 * 3600);
     if (r.error || !r.data) return;
-    r.data.forEach(function (x) { if (x.signedUrl && x.path) urlCache[x.path] = x.signedUrl; });
+    r.data.forEach(function (x) { if (x.signedUrl && x.path) { urlCache[x.path] = x.signedUrl; urlExp[x.path] = at + URL_TTL; } });
+    saveUrls();
   }
 
   async function destroyItem(p) {
@@ -249,7 +277,7 @@
     var cover = photos.length ? photos[0].photo : null;
     return '<article class="plant pcard' + (s.warn ? ' is-due' : '') + '" style="--i:' + (i || 0) + '">' +
       '<button type="button" class="thumb" data-action="gallery" data-id="' + p.id + '" aria-label="Відкрити галерею: ' + esc(p.name) + '">' +
-        (cover ? '<img src="' + esc(cover) + '" alt="">' : hexSvg(SECTIONS[0], 'thumb-hex')) +
+        (cover ? '<img loading="lazy" decoding="async" src="' + esc(cover) + '" alt="">' : hexSvg(SECTIONS[0], 'thumb-hex')) +
         (photos.length ? '<span class="badge">' + photos.length + ' фото</span>' : '') +
       '</button>' +
       '<div class="plant-body">' +
@@ -287,7 +315,7 @@
       var pics = photosOf(t.plant);
       return '<li class="trash-item">' +
         '<button type="button" class="trash-thumb" data-action="gallery" data-id="' + t.plant.id + '" aria-label="Фото: ' + esc(t.plant.name) + '">' +
-          (pics.length ? '<img src="' + esc(pics[0].photo) + '" alt="">' : LEAF) + '</button>' +
+          (pics.length ? '<img loading="lazy" decoding="async" src="' + esc(pics[0].photo) + '" alt="">' : LEAF) + '</button>' +
         '<div class="trash-text"><strong>' + esc(t.plant.name) + '</strong>' +
         '<p class="meta">Зникне остаточно через ' + left + ' · записів: ' + t.plant.logs.length + '</p>' +
         (pics.length ? '<button type="button" class="link-btn" data-action="gallery" data-id="' + t.plant.id + '" style="padding-left:0">Усі фото (' + pics.length + ')</button>' : '') + '</div>' +
@@ -482,7 +510,7 @@
       html += '<ul class="log-list">' + all.map(function (x) {
         var key = x.p.id + ':' + x.l.id;
         var asking = ui.confirm === key;
-        return '<li class="log"><div class="lthumb">' + (x.l.photo ? '<img src="' + esc(x.l.photo) + '" alt="Фото поливу">' : DROP) + '</div>' +
+        return '<li class="log"><div class="lthumb">' + (x.l.photo ? '<img loading="lazy" decoding="async" src="' + esc(x.l.photo) + '" alt="Фото поливу">' : DROP) + '</div>' +
           '<div><div class="row"><h3>' + esc(x.p.name) + '</h3>' +
           '<button type="button" class="link-btn" data-action="del-log" data-plant="' + x.p.id + '" data-log="' + x.l.id + '">' + (asking ? 'Підтвердити' : 'Видалити') + '</button></div>' +
           '<p class="when">' + esc(fmtDate(x.l.date)) + '</p>' +
@@ -517,34 +545,10 @@
   }
 
   // home: branches grow out of a glowing hub; ready sections open, the rest wait
-  var WHEEL = [
-    { a: -22.5, id: 'plants' }, { a: 22.5, id: 'dreams' }, { a: 67.5, id: 'piano' },
-    { a: 112.5 }, { a: 157.5 }, { a: -157.5 }, { a: -112.5 }, { a: -67.5, id: 'ants' }
-  ];
-  // one branch pointing up from the hub: a thin stem that opens into a wide rounded head
-  var PETAL_D = 'M -9 -108 Q 0 -98 9 -108 L 12 -200 C 13 -214 22 -228 34 -244 L 110 -335 C 136 -366 140 -408 108 -434 C 80 -455 40 -460 0 -460 C -40 -460 -80 -455 -108 -434 C -140 -408 -136 -366 -110 -335 L -34 -244 C -22 -228 -13 -214 -12 -200 Z';
-  var HEX_R = 378;
   function wp(r, deg) { var t = deg * Math.PI / 180; return [r * Math.sin(t), -r * Math.cos(t)]; }
   function f1(n) { return n.toFixed(1); }
   function inner(svg) { return svg.replace(/^<svg[^>]*>/, '').replace(/<\/svg>$/, ''); }
   var reduceMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-  function spin(dur, rev) {
-    return reduceMotion ? '' : '<animateTransform attributeName="transform" type="rotate" from="0 0 0" to="' + (rev ? -360 : 360) + ' 0 0" dur="' + dur + 's" repeatCount="indefinite"/>';
-  }
-  // the thin "crystal" lines inside every branch (clipped to its outline)
-  var GEO = (function () {
-    var pts = [], out = '', i;
-    for (i = 0; i < 12; i++) pts.push([150 * Math.sin(i * Math.PI / 6 + 0.26), -372 - 150 * Math.cos(i * Math.PI / 6 + 0.26)]);
-    for (i = 0; i < 12; i++) {
-      var p = pts[i], q = pts[(i + 5) % 12], r = pts[(i + 3) % 12];
-      out += '<line x1="' + f1(p[0]) + '" y1="' + f1(p[1]) + '" x2="' + f1(q[0]) + '" y2="' + f1(q[1]) + '"/>';
-      if (i % 2 === 0) out += '<line x1="' + f1(p[0]) + '" y1="' + f1(p[1]) + '" x2="' + f1(r[0]) + '" y2="' + f1(r[1]) + '"/>';
-    }
-    [[-12, -200, 90, -330], [12, -200, -90, -330], [-10, -150, 60, -290], [10, -150, -60, -290], [0, -110, 0, -230]].forEach(function (l) {
-      out += '<line x1="' + l[0] + '" y1="' + l[1] + '" x2="' + l[2] + '" y2="' + l[3] + '"/>';
-    });
-    return out;
-  })();
   function hexPoints(r) {
     var h = [];
     for (var k = 0; k < 6; k++) h.push(f1(r * Math.sin(k * Math.PI / 3)) + ' ' + f1(-r * Math.cos(k * Math.PI / 3)));
@@ -566,7 +570,6 @@
       '<radialGradient id="hubglow"><stop class="hg1" offset="45%"/><stop class="hg2" offset="100%"/></radialGradient>' +
       '<clipPath id="ctop"><rect x="-150" y="-150" width="300" height="150"/></clipPath>' +
       '<clipPath id="cbot"><rect x="-150" y="0" width="300" height="150"/></clipPath></defs>';
-    out += '<circle class="hub-glow" r="230" fill="url(#hubglow)"/>';
     var arcs = '';
     RING.forEach(function (w, n) {
       var sec = SECTIONS.filter(function (x) { return x.id === w.id; })[0];
@@ -585,7 +588,7 @@
         out += '<polygon class="hx-fill" points="' + hexPoints(86) + '"/>' +
           '<g class="hx-icon-w"><g class="hx-icon" transform="translate(-34 -34) scale(2.85)" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">' + inner(sec.icon) + '</g></g>' +
           '<text class="hx-name" y="58" text-anchor="middle">' + esc(sec.title) + '</text>' +
-          (w.id === 'plants' ? '<g class="p-dot" hidden><circle class="p-dot-ring" cx="80" cy="-72" r="12"/><circle cx="80" cy="-72" r="12"/></g>' : '');
+          (w.id === 'plants' ? '<g class="p-dot" hidden><circle class="p-dot-halo" cx="80" cy="-72" r="19"/><circle cx="80" cy="-72" r="12"/></g>' : '');
       } else {
         out += '<text class="hx-soon" y="7" text-anchor="middle">soon…</text>';
       }
@@ -599,11 +602,9 @@
     // the emblem: a two-tone disc with the sprout cut out of it
     out += '<g class="emblem"><g class="emb-in">' +
       '<circle class="hub emb-ring" r="140"/><circle class="hub-in" r="122"/>' +
-      '<g transform="translate(-66 -70) scale(5.5)"><g class="emb-icon" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">' +
-      (reduceMotion ? '' : '<animateTransform attributeName="transform" type="rotate" values="-2.5 12 21;2.5 12 21;-2.5 12 21" dur="7s" repeatCount="indefinite" calcMode="spline" keySplines=".45 0 .55 1;.45 0 .55 1"/>') +
-      inner(ICON_PLANT) + '</g></g>' +
-
-      '</g></g></svg>';
+      '</g></g></svg>' +
+      '<div class="w-glow" aria-hidden="true"></div>' +
+      '<div class="emb-sprout" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">' + inner(ICON_PLANT) + '</svg></div>';
     document.getElementById('wheel').innerHTML = out;
     wheelBuilt = true;
     var svg = document.querySelector('.wheel');
@@ -844,7 +845,7 @@
       return;
     }
     galleryEl.innerHTML = '<div class="gal-grid">' + photos.map(function (x, i) {
-      return '<button type="button" class="gal-item" data-action="gal-open" data-i="' + i + '" aria-label="Фото від ' + esc(fmtDate(x.date)) + '"><img src="' + esc(x.photo) + '" alt=""><span class="gal-date">' + esc(fmtDate(x.date)) + '</span></button>';
+      return '<button type="button" class="gal-item" data-action="gal-open" data-i="' + i + '" aria-label="Фото від ' + esc(fmtDate(x.date)) + '"><img loading="lazy" decoding="async" src="' + esc(x.photo) + '" alt=""><span class="gal-date">' + esc(fmtDate(x.date)) + '</span></button>';
     }).join('') + '</div>';
   }
 
@@ -1079,7 +1080,6 @@
   var dreamsView = document.getElementById('dreams-view');
   var dreamsSummary = document.getElementById('dreams-summary');
   var dreamsScreen = document.getElementById('dreams-screen');
-  var fileUrls = {};
 
   function findDream(id) {
     return state.dreams.find(function (d) { return d.id === id; }) ||
@@ -1149,10 +1149,12 @@
     all.forEach(function (d) { d.photo = d.path ? (urlCache[d.path] || null) : null; });
     // links for the files of active dreams, valid for 6 hours
     var fpaths = [];
-    list.forEach(function (d) { d.files.forEach(function (f) { if (f.path && !fileUrls[f.path]) fpaths.push(f.path); }); });
+    list.forEach(function (d) { d.files.forEach(function (f) { if (f.path && (!fileUrls[f.path] || !fresh(f.path))) fpaths.push(f.path); }); });
     if (fpaths.length) {
+      var fat = Date.now();
       var su = await sb.storage.from(FILES_BUCKET).createSignedUrls(fpaths, 6 * 3600);
-      if (!su.error && su.data) su.data.forEach(function (s) { if (s.signedUrl && s.path) fileUrls[s.path] = s.signedUrl; });
+      if (!su.error && su.data) su.data.forEach(function (s) { if (s.signedUrl && s.path) { fileUrls[s.path] = s.signedUrl; urlExp[s.path] = fat + URL_TTL; } });
+      saveUrls();
     }
     state.dreams = list;
     state.dreamTrash = trash;
@@ -1248,7 +1250,7 @@
     var vt = vtPhotoId === d.id ? ' style="view-transition-name:dphoto" data-vt' : '';
     return '<article class="plant pcard dream' + (d.status === 'done' ? ' is-done' : '') + '" data-id="' + d.id + '"' + themeAttrs(d).replace('style="', 'style="--i:' + (i || 0) + ';') + (d.color ? '' : ' style="--i:' + (i || 0) + '"') + '>' +
       '<button type="button" class="thumb" data-action="dream-open" data-id="' + d.id + '" aria-label="Відкрити мрію: ' + esc(d.title) + '"' + vt + '>' +
-        (d.photo ? '<img src="' + esc(d.photo) + '" alt="">' : hexBadge(STAR, 'thumb-hex')) + '</button>' +
+        (d.photo ? '<img loading="lazy" decoding="async" src="' + esc(d.photo) + '" alt="">' : hexBadge(STAR, 'thumb-hex')) + '</button>' +
       '<div class="plant-body">' +
         '<h3 class="dream-title"><button type="button" class="title-btn" data-action="dream-open" data-id="' + d.id + '">' + esc(d.title) + '</button></h3>' +
         (pill || '') +
@@ -1266,7 +1268,7 @@
       var hrs = Math.max(1, Math.ceil((TRASH_MS - (now - t.deletedAt)) / 3600000));
       var dd = Math.floor(hrs / 24), hh = hrs % 24;
       var left = ((dd ? dd + ' дн. ' : '') + (hh ? hh + ' год' : '')).trim();
-      return '<li class="trash-item"><span class="trash-thumb">' + (t.dream.photo ? '<img src="' + esc(t.dream.photo) + '" alt="">' : STAR) + '</span>' +
+      return '<li class="trash-item"><span class="trash-thumb">' + (t.dream.photo ? '<img loading="lazy" decoding="async" src="' + esc(t.dream.photo) + '" alt="">' : STAR) + '</span>' +
         '<div class="trash-text"><strong>' + esc(t.dream.title) + '</strong><p class="meta">Зникне через ' + left + '</p></div>' +
         '<div class="trash-actions"><button type="button" class="secondary" data-action="dream-restore" data-id="' + t.dream.id + '">Відновити</button></div></li>';
     }).join('') + '</ul>';
@@ -1455,7 +1457,7 @@
       } else {
         meta = fmtSize(f.size);
         var ext = ((f.name.match(/\.([A-Za-z0-9]{1,5})$/) || [])[1] || '').toUpperCase();
-        pv = isImg ? '<span class="m-pv pv-img"><img src="' + esc(url) + '" alt="" loading="lazy"></span>'
+        pv = isImg ? '<span class="m-pv pv-img"><img loading="lazy" decoding="async" src="' + esc(url) + '" alt="" loading="lazy"></span>'
           : '<span class="m-pv pv-file">' + I_FILE + (ext ? '<b>' + esc(ext) + '</b>' : '') + '</span>';
       }
       var label = '<span class="m-name"><strong>' + esc(f.name) + '</strong><span class="meta">' + meta + '</span></span>';
@@ -1523,7 +1525,7 @@
       '<button type="button" class="dback" data-action="dream-back">' + I_BACK + 'Усі мрії</button>' +
       '<div class="dlayout"><aside class="dside">' +
       '<header class="dhero' + (d.photo ? ' has-photo' : '') + '"' + (vtPhotoId === d.id ? ' style="view-transition-name:dphoto" data-vt' : '') + '>' +
-        (d.photo ? '<img src="' + esc(d.photo) + '" alt="">' : '<span class="dhero-star">' + STAR + '</span>') +
+        (d.photo ? '<img loading="lazy" decoding="async" src="' + esc(d.photo) + '" alt="">' : '<span class="dhero-star">' + STAR + '</span>') +
         '<div class="dhero-text">' + (badge ? '<span class="dhero-badge done">' + badge + '</span>' : '') +
         '<h2>' + esc(d.title) + '</h2></div>' +
       '</header>';
@@ -1994,12 +1996,14 @@
     if (!box) return;
     var seed = 7;
     function rnd() { seed = (seed * 9301 + 49297) % 233280; return seed / 233280; }
-    var html = '';
-    for (var i = 0; i < 90; i++) {
-      var big = rnd() < 0.12, size = big ? 2 + rnd() * 1.2 : 0.8 + rnd() * 1.2;
-      html += '<i class="' + (big ? 'big' : '') + '" style="left:' + (rnd() * 100).toFixed(2) + '%;top:' + (rnd() * 100).toFixed(2) + '%;width:' + size.toFixed(1) + 'px;height:' + size.toFixed(1) + 'px;' +
-        '--d:' + (2.5 + rnd() * 5).toFixed(1) + 's;--dl:-' + (rnd() * 8).toFixed(1) + 's;--o:' + (0.35 + rnd() * 0.6).toFixed(2) + '"></i>';
+    var layers = [[], [], [], []];
+    for (var i = 0; i < 96; i++) {
+      var big = rnd() < 0.12, o = (0.35 + rnd() * 0.6).toFixed(2), spread = big ? (0.6 + rnd() * 0.6).toFixed(1) : (rnd() * 0.5).toFixed(1);
+      var dot = (rnd() * 100).toFixed(2) + 'vw ' + (rnd() * 100).toFixed(2) + 'vh 0 ' + spread + 'px rgba(255,255,255,' + o + ')';
+      if (big) dot += ', ' + dot.replace(/0 [\d.]+px rgba\(255,255,255,[\d.]+\)$/, '6px 1px rgba(200,210,255,.45)');
+      layers[big ? 3 : i % 3].push(dot);
     }
+    var html = layers.map(function (l, n) { return '<i class="sl sl' + n + '" style="box-shadow:' + l.join(',') + '"></i>'; }).join('');
     box.innerHTML = html;
     var bg = document.getElementById('bg');
     if (reduceMotion || !window.matchMedia('(hover: hover) and (pointer: fine)').matches) return;
@@ -2051,6 +2055,11 @@
   });
   if (mq.addEventListener) mq.addEventListener('change', paintThemeBtn);
   paintThemeBtn();
+
+  // keep the app shell on the device so it opens instantly (only on the real site)
+  if ('serviceWorker' in navigator && location.protocol === 'https:') {
+    window.addEventListener('load', function () { navigator.serviceWorker.register('sw.js').catch(function () {}); });
+  }
 
   /* ---------- go ---------- */
   sb.auth.getSession().then(function (r) {
