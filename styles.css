@@ -307,8 +307,10 @@ body.on-dreams { --bg: #F1EFF6; --surface: #FBFAFD; --surface-2: #E8E4F1; --ink:
 .lbl { font-weight: 600; font-size: .92rem; }
 .dream-steps { display: flex; flex-direction: column; gap: 10px; }
 .steps { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
-.step { display: flex; align-items: center; gap: 12px; padding: 4px 0; }
-.step-t { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.step { display: flex; flex-direction: column; gap: 4px; padding: 4px 0; }
+.step-row { display: flex; align-items: center; gap: 10px; }
+.step-t { flex: 1; min-width: 0; overflow-wrap: anywhere; text-align: left; border: 0; background: transparent; padding: 6px 0; color: inherit; font: inherit; }
+span.step-t { padding: 0; }
 .step.is-done .step-t { color: var(--muted); text-decoration: line-through; }
 .check { width: 28px; height: 28px; flex: none; border-radius: 8px; border: 2px solid var(--line); background: var(--surface); display: grid; place-items: center; padding: 0; color: transparent; }
 .check svg { width: 18px; height: 18px; }
@@ -512,3 +514,17 @@ body.on-dreams .grid { grid-template-columns: repeat(auto-fill, minmax(min(100%,
 }
 .m-grid { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); }
 .dream-add { min-height: 140px; }
+
+.ico { flex: none; min-width: 36px; height: 36px; border: 0; border-radius: 50%; background: transparent; color: var(--muted); display: grid; place-items: center; padding: 0; cursor: pointer; }
+.ico svg { width: 18px; height: 18px; }
+.ico:hover, .ico[aria-expanded="true"] { background: var(--surface-2); color: var(--ink); }
+.ico.sure { width: auto; padding: 0 12px; border-radius: 999px; background: #FBE4E0; color: #A33A2B; font-size: .85rem; font-weight: 600; }
+.check.sm { width: 22px; height: 22px; border-radius: 7px; }
+.check.sm svg { width: 14px; height: 14px; }
+.step-sub, .step-edit { margin-left: 38px; display: flex; flex-direction: column; gap: 8px; }
+.step-sub p { margin: 0; color: var(--muted); font-size: .9rem; white-space: pre-wrap; overflow-wrap: anywhere; }
+.subs { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
+.sub { display: flex; align-items: center; gap: 10px; font-size: .94rem; }
+.sub.is-done .step-t { color: var(--muted); text-decoration: line-through; }
+.step-edit input[type="text"], .step-edit textarea { width: 100%; border: 1px solid var(--line); background: var(--bg); border-radius: 12px; padding: 10px 12px; font: inherit; color: inherit; }
+.step-edit textarea { resize: vertical; }

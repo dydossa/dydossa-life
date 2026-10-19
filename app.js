@@ -757,6 +757,8 @@
   var I_NOTE = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 3h9l4 4v14H6z"/><path d="M14 3v5h5M9 13h7M9 17h5"/></svg>';
   var I_FILE = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3H6v18h12V7z"/><path d="M14 3v4h4"/></svg>';
   var I_CLIP = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20.5 11.5l-8.2 8.2a5 5 0 0 1-7.1-7.1l8.5-8.5a3.3 3.3 0 0 1 4.7 4.7l-8.5 8.5a1.7 1.7 0 0 1-2.4-2.4l7.8-7.8"/></svg>';
+  var I_X = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>';
+  var I_EDIT = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20h4L19 9l-4-4L4 16z"/><path d="M13.5 6.5l4 4"/></svg>';
   var I_PLUS = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>';
   var I_MORE = '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="5" cy="12" r="1.8"/><circle cx="12" cy="12" r="1.8"/><circle cx="19" cy="12" r="1.8"/></svg>';
   var I_PALETTE = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3a9 9 0 1 0 0 18c1.4 0 2-.9 2-1.8 0-1.4-1.2-1.5-1.2-2.7 0-.9.7-1.5 1.6-1.5H17a4 4 0 0 0 4-4c0-4.4-4-8-9-8z"/><circle cx="7.5" cy="11" r="1"/><circle cx="10" cy="7" r="1"/><circle cx="14.5" cy="7" r="1"/></svg>';
@@ -1013,7 +1015,7 @@
   function paintThemeForm() { dThemesEl.innerHTML = swatches(dTheme, 'd-theme'); }
   // what the detail view shows: tab 'steps' or 'files', the open folder, an open note ('new' for a new one),
   // and which inline form is open ('folder' or 'rename:<id>')
-  var dv = { folder: null, note: null, inline: null, add: false, menu: null, drag: false, pal: false };
+  var dv = { folder: null, note: null, inline: null, add: false, menu: null, drag: false, pal: false, step: null };
 
   function dSetPreview(src) {
     dPreview.hidden = !src;
@@ -1070,12 +1072,37 @@
     if (n) html += '<div class="bar" aria-hidden="true"><i style="width:' + Math.round(k / n * 100) + '%"></i></div>';
     html += '<form id="step-form" class="step-add"><input type="text" id="step-input" maxlength="140" placeholder="Новий крок" autocomplete="off" aria-label="Новий крок">' +
       '<button type="submit" class="secondary">Додати</button></form>';
-    html += '<ul class="steps">' + ordered.map(function (s) {
-      var key = 'step:' + s.id;
-      return '<li class="step' + (s.d ? ' is-done' : '') + '">' +
-        '<button type="button" class="check" role="checkbox" aria-checked="' + !!s.d + '" data-action="step-toggle" data-step="' + esc(s.id) + '" aria-label="' + esc(s.t) + '">' + CHECK + '</button>' +
-        '<span class="step-t">' + esc(s.t) + '</span>' +
-        '<button type="button" class="link-btn" data-action="step-del" data-step="' + esc(s.id) + '">' + (ui.confirm === key ? 'Точно?' : 'Прибрати') + '</button></li>';
+    html += '<ul class="steps">' + ordered.map(function (st) {
+      var open = dv.step === st.id, subs = st.s || [];
+      var sd = subs.filter(function (x) { return x.d; }).length;
+      var key = 'step:' + st.id;
+      var row = '<div class="step-row">' +
+        '<button type="button" class="check" role="checkbox" aria-checked="' + !!st.d + '" data-action="step-toggle" data-step="' + esc(st.id) + '" aria-label="' + esc(st.t) + '">' + CHECK + '</button>' +
+        '<button type="button" class="step-t" data-action="step-edit" data-step="' + esc(st.id) + '">' + esc(st.t) + '</button>' +
+        '<button type="button" class="ico" data-action="step-edit" data-step="' + esc(st.id) + '" aria-label="Редагувати" aria-expanded="' + open + '">' + I_EDIT + '</button>' +
+        (ui.confirm === key
+          ? '<button type="button" class="ico sure" data-action="step-del" data-step="' + esc(st.id) + '">Видалити?</button>'
+          : '<button type="button" class="ico" data-action="step-del" data-step="' + esc(st.id) + '" aria-label="Прибрати">' + I_X + '</button>') +
+        '</div>';
+      var body = '';
+      if (open) {
+        body = '<div class="step-edit"><input type="text" id="step-title" maxlength="140" value="' + esc(st.t) + '" aria-label="Назва кроку">' +
+          '<textarea id="step-note" rows="2" maxlength="2000" placeholder="Опис" aria-label="Опис">' + esc(st.n || '') + '</textarea>' +
+          '<ul class="subs">' + subs.map(function (x) {
+            return '<li class="sub' + (x.d ? ' is-done' : '') + '"><button type="button" class="check sm" role="checkbox" aria-checked="' + !!x.d + '" data-action="sub-toggle" data-step="' + esc(st.id) + '" data-sub="' + esc(x.id) + '" aria-label="' + esc(x.t) + '">' + CHECK + '</button>' +
+              '<span class="step-t">' + esc(x.t) + '</span>' +
+              '<button type="button" class="ico" data-action="sub-del" data-step="' + esc(st.id) + '" data-sub="' + esc(x.id) + '" aria-label="Прибрати">' + I_X + '</button></li>';
+          }).join('') + '</ul>' +
+          '<form class="step-add sub-form" data-step="' + esc(st.id) + '"><input type="text" id="sub-input" maxlength="140" placeholder="Підкрок" autocomplete="off" aria-label="Підкрок">' +
+          '<button type="submit" class="secondary">Додати</button></form>' +
+          '<button type="button" class="link-btn" data-action="step-edit" data-step="' + esc(st.id) + '" style="align-self:flex-end">Готово</button></div>';
+      } else if (st.n || subs.length) {
+        body = '<div class="step-sub">' + (st.n ? '<p>' + esc(st.n) + '</p>' : '') +
+          (subs.length ? '<ul class="subs">' + subs.map(function (x) {
+            return '<li class="sub' + (x.d ? ' is-done' : '') + '"><button type="button" class="check sm" role="checkbox" aria-checked="' + !!x.d + '" data-action="sub-toggle" data-step="' + esc(st.id) + '" data-sub="' + esc(x.id) + '" aria-label="' + esc(x.t) + '">' + CHECK + '</button><span class="step-t">' + esc(x.t) + '</span></li>';
+          }).join('') + '</ul>' : '') + '</div>';
+      }
+      return '<li class="step' + (st.d ? ' is-done' : '') + (open ? ' is-open' : '') + '">' + row + body + '</li>';
     }).join('') + '</ul>';
     return html + '</div>';
   }
@@ -1215,7 +1242,7 @@
       '<button type="button" class="danger" data-action="dream-delete">' + (ui.confirm === 'dream' ? 'Так, у корзину на 2 дні' : 'Видалити мрію') + '</button></div></div>';
     // keep what is being typed if the page is redrawn while a form is open
     var keep = {};
-    ['rename-input', 'note-title', 'note-body'].forEach(function (key) {
+    ['rename-input', 'note-title', 'note-body', 'step-title', 'step-note', 'sub-input'].forEach(function (key) {
       var el = document.getElementById(key); if (el && dreamsView.contains(el)) keep[key] = el.value;
     });
     var focusId = document.activeElement && dreamsView.contains(document.activeElement) ? document.activeElement.id : null;
@@ -1243,6 +1270,16 @@
 
   // forms inside the detail view are re-drawn, so listen on the document
   document.addEventListener('submit', function (e) {
+    if (e.target && e.target.classList && e.target.classList.contains('sub-form')) {
+      e.preventDefault();
+      var dd = curDream(), inp = document.getElementById('sub-input'), tt = inp && inp.value.trim();
+      if (!dd || !tt || ui.busy) return;
+      var sid2 = e.target.getAttribute('data-step');
+      run(function () { return saveSteps(dd, mapStep(dd, sid2, function (x) { return { id: x.id, t: x.t, d: x.d, n: x.n, s: (x.s || []).concat([{ id: uuid(), t: tt, d: false }]) }; })); }).then(function (ok) {
+        var i3 = document.getElementById('sub-input'); if (ok && i3) { i3.value = ''; i3.focus(); }
+      });
+      return;
+    }
     var id = e.target && e.target.id;
     if (['step-form', 'folder-form', 'rename-form', 'note-form'].indexOf(id) === -1) return;
     e.preventDefault();
@@ -1276,7 +1313,20 @@
     }
   });
 
+  function mapStep(d, sid, fn) { return d.steps.map(function (x) { return x.id === sid ? fn(x) : x; }); }
   document.addEventListener('change', function (e) {
+    var tid = e.target && e.target.id;
+    if ((tid === 'step-title' || tid === 'step-note') && dv.step) {
+      var dd = curDream(), sid = dv.step, v = e.target.value;
+      if (!dd) return;
+      if (tid === 'step-title' && !v.trim()) return;
+      run(function () {
+        return saveSteps(dd, mapStep(dd, sid, function (x) {
+          return { id: x.id, t: tid === 'step-title' ? v.trim() : x.t, d: x.d, n: tid === 'step-note' ? v.trim() : x.n, s: x.s || [] };
+        }));
+      });
+      return;
+    }
     if (!e.target || e.target.id !== 'done-date') return;
     var d = curDream(), v = e.target.value;
     if (!d || !v || v > iso(today())) return;
@@ -1291,7 +1341,7 @@
       case 'dream-add': openSheet('dream-add'); return true;
       case 'dream-open':
         ui.dreamId = id; ui.confirm = null;
-        dv = { folder: null, note: null, inline: null, add: false, menu: null, drag: false, pal: false };
+        dv = { folder: null, note: null, inline: null, add: false, menu: null, drag: false, pal: false, step: null };
         try { history.pushState({ dream: id }, ''); } catch (e) {}
         render(); window.scrollTo(0, 0);
         return true;
@@ -1322,6 +1372,18 @@
         return true;
       case 'm-add': dv.add = !dv.add; dv.inline = null; renderDreamDetail(); return true;
       case 'm-menu': dv.menu = dv.menu === m ? null : m; ui.confirm = null; renderDreamDetail(); return true;
+      case 'step-edit': { var es = el.getAttribute('data-step'); dv.step = dv.step === es ? null : es; ui.confirm = null; renderDreamDetail(); return true; }
+      case 'sub-toggle':
+      case 'sub-del': {
+        var ps = el.getAttribute('data-step'), sb2 = el.getAttribute('data-sub');
+        var nx = mapStep(d, ps, function (x) {
+          var subs = act === 'sub-del' ? (x.s || []).filter(function (y) { return y.id !== sb2; })
+            : (x.s || []).map(function (y) { return y.id === sb2 ? { id: y.id, t: y.t, d: !y.d } : y; });
+          return { id: x.id, t: x.t, d: x.d, n: x.n, s: subs };
+        });
+        run(function () { return saveSteps(d, nx); });
+        return true;
+      }
       case 'step-toggle':
       case 'step-del':
         var sid = el.getAttribute('data-step');
@@ -1329,7 +1391,7 @@
         ui.confirm = null;
         var next = act === 'step-del'
           ? d.steps.filter(function (s) { return s.id !== sid; })
-          : d.steps.map(function (s) { return s.id === sid ? { id: s.id, t: s.t, d: !s.d } : s; });
+          : d.steps.map(function (s) { return s.id === sid ? { id: s.id, t: s.t, d: !s.d, n: s.n, s: s.s || [] } : s; });
         run(function () { return saveSteps(d, next); });
         return true;
       case 'm-folder': dv.folder = m || null; dv.inline = null; dv.add = false; dv.menu = null; ui.confirm = null; renderDreamDetail(); return true;
