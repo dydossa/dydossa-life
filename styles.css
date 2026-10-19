@@ -576,3 +576,5 @@ body.on-dreams .grid { grid-template-columns: 1fr; }
 [data-dt="photo"] { --t: var(--tl); }
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) [data-dt="photo"] { --t: var(--td); } }
 :root[data-theme="dark"] [data-dt="photo"] { --t: var(--td); }
+
+button.brand { border: 0; background: transparent; color: inherit; font: inherit; padding: 0; cursor: pointer; text-align: left; }

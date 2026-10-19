@@ -12,7 +12,7 @@
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
 <link rel="icon" type="image/png" href="icons/icon-192.png">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=Figtree:wght@400;500;600&display=swap">
-<link rel="stylesheet" href="styles.css?v=25">
+<link rel="stylesheet" href="styles.css?v=26">
 </head>
 <body>
 
@@ -39,10 +39,10 @@
 <!-- The app -->
 <div class="wrap" id="app" hidden>
   <header class="top">
-    <div class="brand">
+    <button type="button" class="brand" data-action="home" aria-label="На головну">
       <svg viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M16 29V15"/><path d="M16 17c-7 0-11-4-11-11 7 0 11 4 11 11z"/><path d="M16 21c0-5 3-9 10-9 0 6-3 9-10 9z"/></svg>
       <h1>dydossa <span>life</span></h1>
-    </div>
+    </button>
     <div class="top-actions">
       <button type="button" class="icon-btn" id="home-btn" data-action="home" aria-label="На головну" hidden>
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 11l8-7 8 7"/><path d="M6 10v10h12V10"/></svg>
@@ -162,6 +162,6 @@
 
 <script src="vendor/supabase.js"></script>
 <script src="config.js"></script>
-<script src="app.js?v=25"></script>
+<script src="app.js?v=26"></script>
 </body>
 </html>

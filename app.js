@@ -793,7 +793,7 @@
             var w = sat * (0.4 + v); bk.w += w; bk.r += r * w; bk.g += g * w; bk.b += b * w;
           }
           Object.keys(buckets).forEach(function (k) { if (!best || buckets[k].w > best.w) best = buckets[k]; });
-          if (!best || best.w < 0.8) { resolve(null); return; }
+          if (!best || best.w < 0.8) { resolve('#808080'); return; }
           var hex = [best.r, best.g, best.b].map(function (n) { return ('0' + Math.round(n / best.w).toString(16)).slice(-2); }).join('');
           resolve('#' + hex);
         } catch (e) { resolve(null); }
@@ -813,7 +813,7 @@
   function tones(hex) {
     var n = parseInt(hex.slice(1), 16), r = n >> 16 & 255, g = n >> 8 & 255, b = n & 255;
     var h = Math.round(rgbHue(r, g, b)), mx = Math.max(r, g, b), mn = Math.min(r, g, b);
-    var sat = mx ? (mx - mn) / mx : 0, S = Math.round(Math.min(70, Math.max(38, sat * 100)));
+    var sat = mx ? (mx - mn) / mx : 0, S = sat < 0.12 ? 0 : Math.round(Math.min(70, Math.max(38, sat * 100)));
     return { l: 'hsl(' + h + ' ' + S + '% 38%)', d: 'hsl(' + h + ' ' + Math.min(80, S + 10) + '% 72%)' };
   }
   function themeAttrs(d) {
