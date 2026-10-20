@@ -2319,7 +2319,16 @@
     var html = layers.map(function (l, n) { return '<i class="sl sl' + n + '" style="box-shadow:' + l.join(',') + '"></i>'; }).join('');
     box.innerHTML = html;
     var bg = document.getElementById('bg');
-    if (reduceMotion || !window.matchMedia('(hover: hover) and (pointer: fine)').matches) return;
+    if (reduceMotion) return;
+    if (!window.matchMedia('(hover: hover) and (pointer: fine)').matches) {
+      // phone: the stars drift a little as you scroll, so the page has depth like on a computer
+      var sraf = 0;
+      window.addEventListener('scroll', function () {
+        if (sraf) return;
+        sraf = requestAnimationFrame(function () { sraf = 0; bg.style.setProperty('--py', Math.min(window.scrollY / 260, 4).toFixed(3)); });
+      }, { passive: true });
+      return;
+    }
     var raf = 0, px = 0, py = 0;
     window.addEventListener('pointermove', function (e) {
       if (ui.screen === 'dreams') return;
@@ -2397,7 +2406,39 @@
 
   // no pinch or double-tap zoom (iOS ignores the viewport setting in the browser)
   ['gesturestart', 'gesturechange'].forEach(function (n) { document.addEventListener(n, function (e) { e.preventDefault(); }, { passive: false }); });
-  document.addEventListener('touchmove', function (e) { if (e.touches.length > 1) e.preventDefault(); }, { passive: false });
+
+  // phone: cards further down the page glide in as they scroll into view (each one only once)
+  (function () {
+    if (reduceMotion || !('IntersectionObserver' in window) || !window.matchMedia('(hover: none)').matches) return;
+    var seen = new Set();
+    var SEL = '.section-screen .pcard, .section-screen .m-tile, .section-screen .tcard, .dream-steps, .dwhy, .dstats, .dmats, .ddone, .add-card';
+    function key(el) {
+      var id = el.getAttribute('data-id') || (el.querySelector('[data-id]') || el).getAttribute('data-id') || '';
+      return ui.screen + '|' + (ui.dreamId || '') + '|' + el.className.split(' ')[0] + '|' + (id || (el.textContent || '').trim().slice(0, 16));
+    }
+    var io = new IntersectionObserver(function (list) {
+      list.forEach(function (en) {
+        if (!en.isIntersecting) return;
+        var el = en.target; io.unobserve(el);
+        el.classList.add('rv-in');
+        setTimeout(function () { el.classList.remove('rv', 'rv-in'); }, 700);
+      });
+    }, { rootMargin: '0px 0px -8% 0px' });
+    var pending = 0;
+    function scan() {
+      pending = 0;
+      var h = window.innerHeight;
+      document.querySelectorAll(SEL).forEach(function (el) {
+        if (el.classList.contains('rv')) return;
+        var k = key(el);
+        if (seen.has(k)) return;
+        seen.add(k);
+        if (el.getBoundingClientRect().top < h) return;
+        el.classList.add('rv'); io.observe(el);
+      });
+    }
+    new MutationObserver(function () { if (!pending) pending = requestAnimationFrame(scan); }).observe(document.getElementById('app'), { childList: true, subtree: true });
+  })();
 
   /* ---------- theme ---------- */
   var root = document.documentElement;

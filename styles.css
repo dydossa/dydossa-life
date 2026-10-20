@@ -1478,3 +1478,37 @@ html[data-theme="dark"] { background: #070818; }
   body.on-home .hl-items { width: 100%; box-sizing: border-box; padding-inline: 4px; }
   body.on-home .hl-row, body.on-home .hl-item { max-width: 100%; }
 }
+
+/* ===== phone: same motion as on a computer, lighter on the GPU ===== */
+/* cards below the fold glide in once */
+.rv { opacity: 0; transform: translateY(26px) scale(.98); animation: none !important; }
+.rv.rv-in { opacity: 1; transform: none; transition: opacity .55s ease-out, transform .65s cubic-bezier(.2, .9, .25, 1); }
+/* the stars follow scrolling a little (set from JS) */
+@media (hover: none) { .bg-stars { transform: translateY(calc(var(--py) * -10px)); transition: transform .5s ease-out; } }
+@media (hover: none) {
+  /* tapping a badge on the flower lights it up and dims the rest, like hovering does */
+  .hexring:has(.hx.ready.tap) .hx:not(.tap) .hx-in { opacity: .35; transition: opacity .3s; }
+  .hx.tap .hx-frame { stroke-width: 6; }
+  .hexring:has(.hx.s-ants.tap) .arc-ants, .hexring:has(.hx.s-piano.tap) .arc-piano { opacity: .9; }
+  /* list rows: press feedback with the section colour */
+  .hl-item.ready:active { background: color-mix(in srgb, var(--c) 12%, transparent); }
+  /* cards, tiles and photos press in like buttons */
+  .pcard, .m-tile, .tcard, .gal-item, .hm-item, .step.td, .gv-th { transition: transform .2s cubic-bezier(.2, .9, .3, 1.4), border-color .2s, box-shadow .2s; }
+  .pcard:active, .tcard:active { transform: scale(.985); }
+  .m-tile:active, .gal-item:active, .gv-th:active { transform: scale(.96); transition-duration: .08s; }
+  .hm-item:active .hm-hex { transform: translateY(-4px) scale(1.1); }
+  .step.td:not(.dragging):not(.completing):active { background: color-mix(in srgb, var(--accent) 8%, transparent); }
+  .check:active { transform: scale(.88); }
+  /* the photo in a card zooms gently while pressed */
+  .pcard .thumb img { transition: transform .5s cubic-bezier(.2, .9, .25, 1); }
+  .pcard .thumb:active img { transform: scale(1.04); }
+
+  /* lighter on the GPU: repeated or full-screen blurs become solid glass */
+  body:is(.on-plants, .on-dreams) .icon-btn, body:is(.on-plants, .on-dreams) .tabs, .dback, .m-tile .more, .dhero-badge, .dpal { -webkit-backdrop-filter: none !important; backdrop-filter: none !important; }
+  body:is(.on-plants, .on-dreams) .icon-btn, body:is(.on-plants, .on-dreams) .tabs, .dback, .m-tile .more { background: color-mix(in srgb, var(--surface) 88%, transparent); }
+  .dhero-badge, .dpal { background: rgba(10, 12, 30, .45); }
+  body:is(.on-plants, .on-dreams) .overlay { -webkit-backdrop-filter: none !important; backdrop-filter: none !important; background: rgba(4, 5, 14, .62); }
+  /* nothing moves behind an open sheet */
+  html.sheet-open .bg *, html.sheet-open .bg::before, html.sheet-open .w-glow, html.sheet-open .emb-sprout svg { animation-play-state: paused !important; }
+  .tc-ring.soon { animation: none; }
+}
