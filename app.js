@@ -2384,8 +2384,15 @@
 
   // phone status bar follows the theme
   function paintStatusBar() {
-    var m = document.querySelector('meta[name="theme-color"]');
-    if (m) m.setAttribute('content', isDark() ? '#070818' : '#F4F1EA');
+    // Safari tints its bars from theme-color, color-scheme and the page colour; a fresh meta tag makes it re-read
+    var c = isDark() ? '#070818' : '#F4F1EA';
+    document.querySelectorAll('meta[name="theme-color"]').forEach(function (x) { x.remove(); });
+    var m = document.createElement('meta'); m.name = 'theme-color'; m.content = c; document.head.appendChild(m);
+    var cs = document.querySelector('meta[name="color-scheme"]');
+    if (!cs) { cs = document.createElement('meta'); cs.name = 'color-scheme'; document.head.appendChild(cs); }
+    cs.content = isDark() ? 'dark' : 'light';
+    document.documentElement.style.colorScheme = isDark() ? 'dark' : 'light';
+    document.documentElement.style.backgroundColor = c;
   }
 
   // no pinch or double-tap zoom (iOS ignores the viewport setting in the browser)

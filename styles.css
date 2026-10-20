@@ -1471,3 +1471,10 @@ html[data-theme="dark"] { background: #070818; }
     padding-bottom: 70px; -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 14px, #000 calc(100% - 40px), transparent 100%); mask-image: linear-gradient(to bottom, transparent 0, #000 14px, #000 calc(100% - 40px), transparent 100%); }
   body.on-home .hl-items::-webkit-scrollbar { display: none; }
 }
+/* the home list moves only up and down */
+@media (max-width: 760px) {
+  body.on-home .hl-items { overflow-x: hidden; overscroll-behavior-x: none; }
+  body.on-home .hl-items { touch-action: pan-y; }
+  body.on-home .hl-items { width: 100%; box-sizing: border-box; padding-inline: 4px; }
+  body.on-home .hl-row, body.on-home .hl-item { max-width: 100%; }
+}
