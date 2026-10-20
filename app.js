@@ -2388,6 +2388,10 @@
     if (m) m.setAttribute('content', isDark() ? '#070818' : '#F4F1EA');
   }
 
+  // no pinch or double-tap zoom (iOS ignores the viewport setting in the browser)
+  ['gesturestart', 'gesturechange'].forEach(function (n) { document.addEventListener(n, function (e) { e.preventDefault(); }, { passive: false }); });
+  document.addEventListener('touchmove', function (e) { if (e.touches.length > 1) e.preventDefault(); }, { passive: false });
+
   /* ---------- theme ---------- */
   var root = document.documentElement;
   var themeBtn = document.getElementById('theme-btn');

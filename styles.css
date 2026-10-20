@@ -1449,3 +1449,10 @@ html.sheet-open, html.sheet-open body { overflow: hidden; }
   html.scrolled .top h1 { transform-origin: left center; }
 }
 @media (hover: none) { button.brand { padding-block: 7px; margin-block: -7px; } }
+
+/* phone: no rubber-band gap, no scrollbar, no pinch zoom */
+html, body { overscroll-behavior: none; }
+html { touch-action: pan-x pan-y; scrollbar-width: none; background: #F4F1EA; }
+html::-webkit-scrollbar, body::-webkit-scrollbar { display: none; width: 0; height: 0; }
+@media (prefers-color-scheme: dark) { html:not([data-theme="light"]) { background: #070818; } }
+html[data-theme="dark"] { background: #070818; }
