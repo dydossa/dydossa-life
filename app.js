@@ -96,13 +96,13 @@
 
   function status(p) {
     var last = lastDate(p);
-    if (!last) return { warn: true, text: 'Потрібен перший полив', frac: 1, meta: 'ще не поливали', due: true };
+    if (!last) return { warn: true, text: 'Потрібен перший полив', frac: 1, meta: 'ще не поливали', due: true, never: true, left: 0 };
     var left = diffDays(parse(addDays(last, p.interval)), today());
     var frac = Math.min(1, Math.max(0, diffDays(today(), parse(last)) / p.interval));
     var meta = 'останній полив ' + fmtDate(last);
-    if (left < 0) return { warn: true, text: 'Прострочено на ' + (-left) + ' дн.', frac: 1, meta: meta, due: true };
-    if (left === 0) return { warn: true, text: 'Полити сьогодні', frac: 1, meta: meta, due: true };
-    return { warn: false, text: 'Через ' + left + ' дн.', frac: frac, meta: meta, due: false };
+    if (left < 0) return { warn: true, text: 'Прострочено на ' + (-left) + ' дн.', frac: 1, meta: meta, due: true, left: left, last: last };
+    if (left === 0) return { warn: true, text: 'Полити сьогодні', frac: 1, meta: meta, due: true, left: 0, last: last };
+    return { warn: false, text: 'Через ' + left + ' дн.', frac: frac, meta: meta, due: false, left: left, last: last };
   }
 
   /* ---------- talking to Supabase ---------- */
@@ -307,48 +307,77 @@
   var view = document.getElementById('view');
   var summary = document.getElementById('summary');
 
+  // small line icons for the plants section
+  var P_CLOCK = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/></svg>';
+  var P_REPEAT = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17 2.5l3 3-3 3"/><path d="M4 11V9.5a4 4 0 0 1 4-4h12"/><path d="M7 21.5l-3-3 3-3"/><path d="M20 13v1.5a4 4 0 0 1-4 4H4"/></svg>';
+  var P_CAM = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 8h3l1.5-2.5h7L17 8h3v11H4z"/><circle cx="12" cy="13" r="3.4"/></svg>';
+  var P_ALERT = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M12 6v7"/><path d="M12 17.5v.5"/></svg>';
+  var P_GAP = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12h18"/><path d="M6 9l-3 3 3 3"/><path d="M18 9l3 3-3 3"/></svg>';
+
+  // a pointy-top hexagon in a 86.6 x 100 box, drawn from the top corner clockwise
+  var HEX_D = 'M43.3 1 L85.6 25.5 L85.6 74.5 L43.3 99 L1 74.5 L1 25.5 Z';
+
   function renderSummary() {
     var due = state.plants.filter(function (p) { return status(p).due; }).length;
-    var tail;
-    if (!state.plants.length) tail = 'Додайте першу рослину';
-    else if (due === 0) tail = state.plants.length + ' ' + plural(state.plants.length, 'рослина', 'рослини', 'рослин') + ' · сьогодні поливати нічого';
-    else tail = 'Потрібен полив: <span class="alert">' + due + ' з ' + state.plants.length + '</span>';
-    summary.innerHTML = tail;
+    var pics = state.plants.reduce(function (a, p) { return a + photosOf(p).length; }, 0);
+    var n = state.plants.length;
+    summary.innerHTML = !n ? '<span class="pst">' + I_PLUS + '</span>' :
+      '<span class="pst' + (due ? ' warn' : ' ok') + '" title="' + (due ? 'Потрібен полив' : 'Сьогодні поливати нічого') + '">' + DROP + '<b>' + (due ? due : CHECK) + '</b></span>' +
+      '<span class="pst" title="Рослин">' + ICON_PLANT + '<b>' + n + '</b></span>' +
+      '<span class="pst" title="Фото">' + P_CAM + '<b>' + pics + '</b></span>';
+    summary.setAttribute('aria-label', plantsLine());
     var hx = document.getElementById('plants-hex');
     if (hx && !hx.firstChild) hx.innerHTML = hexSvg(SECTIONS[0], 'hero-hex');
     var hero = document.getElementById('plants-hero');
     if (hero) hero.classList.toggle('due', due > 0);
   }
 
-  function plantCard(p, i) {
-    var s = status(p);
-    var photos = photosOf(p);
-    var cover = photos.length ? photos[0].photo : null;
-    return '<article class="plant pcard' + (s.warn ? ' is-due' : '') + '" style="--i:' + (i || 0) + '">' +
-      '<button type="button" class="thumb" data-action="gallery" data-id="' + p.id + '" aria-label="Відкрити галерею: ' + esc(p.name) + '">' +
-        (cover ? '<img loading="lazy" decoding="async" src="' + esc(cover) + '" alt="">' : hexSvg(SECTIONS[0], 'thumb-hex')) +
-        (photos.length ? '<span class="badge">' + photos.length + ' фото</span>' : '') +
-      '</button>' +
-      '<div class="plant-body">' +
-        '<div class="plant-title"><h3><button type="button" class="title-btn" data-action="gallery" data-id="' + p.id + '">' + esc(p.name) + '</button></h3>' +
-        '<button type="button" class="ico" data-action="edit" data-id="' + p.id + '" aria-label="Змінити: ' + esc(p.name) + '">' + I_EDIT + '</button></div>' +
-        '<p class="meta">Раз на ' + p.interval + ' дн. · ' + esc(s.meta) + '</p>' +
-        '<span class="pill' + (s.warn ? ' warn' : '') + '">' + (s.warn ? '<i class="pdot"></i>' : '') + esc(s.text) + '</span>' +
-        '<div class="bar' + (s.warn ? ' warn' : '') + '" aria-hidden="true"><i style="width:' + Math.round(s.frac * 100) + '%"></i></div>' +
-        '<button type="button" class="primary" data-action="water" data-id="' + p.id + '">' + DROP + 'Полив</button>' +
-      '</div></article>';
+  function leftLabel(s) {
+    if (s.never) return { t: 'новий', i: P_ALERT };
+    if (s.left < 0) return { t: (-s.left) + ' д', i: P_ALERT };
+    if (s.left === 0) return { t: 'сьогодні', i: DROP };
+    return { t: s.left + ' д', i: P_CLOCK };
   }
 
+  // a plant is a hexagon: its photo inside, a frame that drains as the next watering comes closer, a drop button below
+  function plantPod(p, i, feat) {
+    var s = status(p), photos = photosOf(p), cover = photos.length ? photos[0].photo : null;
+    var water = s.due ? 0 : Math.max(0.04, 1 - s.frac);
+    var ll = leftLabel(s);
+    var hex = '<div class="pod-hex">' +
+      '<button type="button" class="pod-pic" data-action="gallery" data-id="' + p.id + '" aria-label="Фото: ' + esc(p.name) + '">' +
+        (cover ? '<img loading="lazy" decoding="async" src="' + esc(cover) + '" alt="">' : '<span class="pod-ico">' + ICON_PLANT + '</span>') + '</button>' +
+      '<svg class="pod-ring" viewBox="-6 -6 98.6 112" aria-hidden="true"><path class="pr-track" d="' + HEX_D + '"/>' +
+        '<path class="pr-fill" pathLength="100" d="' + HEX_D + '" style="stroke-dasharray:' + Math.round(water * 100) + ' 100"/></svg>' +
+      (photos.length ? '<span class="pod-n" aria-hidden="true">' + I_IMAGE + photos.length + '</span>' : '') +
+      '<button type="button" class="pod-water" data-action="water" data-id="' + p.id + '" aria-label="Полити: ' + esc(p.name) + '">' + DROP + '</button>' +
+      '</div>';
+    var chips = '<div class="pod-meta">' +
+      '<span class="pm' + (s.warn ? ' warn' : '') + '" title="' + esc(s.text) + '">' + ll.i + ll.t + '</span>' +
+      '<span class="pm soft" title="Раз на ' + p.interval + ' дн.">' + P_REPEAT + p.interval + '</span>' +
+      (feat && s.last ? '<span class="pm soft" title="Останній полив">' + DROP + esc(fmtShort(s.last)) + '</span>' : '') +
+      '</div>';
+    return '<article class="pod' + (feat ? ' feat' : ' pstag') + (s.warn ? ' is-due' : '') + '" data-id="' + p.id + '" style="--i:' + i + '">' + hex +
+      '<div class="pod-info"><h3><button type="button" class="title-btn" data-action="gallery" data-id="' + p.id + '">' + esc(p.name) + '</button></h3>' + chips +
+      (feat ? '<div class="pod-acts"><button type="button" class="pod-big" data-action="water" data-id="' + p.id + '">' + DROP + '<span>Полив</span></button>' +
+        '<button type="button" class="pod-btn" data-action="gallery" data-id="' + p.id + '" aria-label="Фото">' + I_IMAGE + '</button>' +
+        '<button type="button" class="pod-btn" data-action="edit" data-id="' + p.id + '" aria-label="Змінити">' + I_GEAR + '</button></div>' : '') +
+      '</div>' +
+      (feat ? '' : '<button type="button" class="pod-edit" data-action="edit" data-id="' + p.id + '" aria-label="Змінити: ' + esc(p.name) + '">' + I_GEAR + '</button>') +
+      '</article>';
+  }
+  function fmtShort(isoDate) {
+    return new Intl.DateTimeFormat('uk-UA', { day: 'numeric', month: 'short' }).format(parse(isoDate)).replace('.', '');
+  }
+  function urgency(p) { var s = status(p); return s.never ? -9999 : s.left; }
+
   function renderPlants() {
-    var html = '';
-    if (!state.plants.length) {
-      html += '<div class="empty">Рослин поки немає.</div><div style="height:16px"></div>';
-    } else {
-      html += '<div class="grid">' + state.plants.map(plantCard).join('') +
-        '<button type="button" class="add-card add-tile" data-action="add" style="--i:' + state.plants.length + '">' + I_PLUS + 'Додати рослину</button></div>';
-    }
-    if (!state.plants.length) html += '<button type="button" class="add-card" style="width:100%" data-action="add">' + I_PLUS + 'Додати рослину</button>';
-    view.innerHTML = html;
+    var list = state.plants.slice().sort(function (a, b) { return urgency(a) - urgency(b); });
+    var html = '<div class="pgrid' + (list.length ? '' : ' empty-g') + '">';
+    list.forEach(function (p, i) { html += plantPod(p, i, i === 0 && list.length > 1); });
+    html += '<button type="button" class="pod-add pstag" data-action="add" aria-label="Додати рослину" style="--i:' + list.length + '">' +
+      '<svg class="pa-hex" viewBox="-6 -6 98.6 112" aria-hidden="true"><path d="' + HEX_D + '"/></svg><span class="pa-plus">' + I_PLUS + '</span></button>';
+    view.innerHTML = html + '</div>';
   }
 
   /* ---------- trash page ---------- */
@@ -425,21 +454,19 @@
     }).join('');
 
     var span = spanDays(ids), tIso = iso(today()), startIso = addDays(tIso, -span);
-    var rows = ids.map(function (id) {
+    var tiles = ids.map(function (id, i) {
       var p = findPlant(id), s = statsFor(p, startIso, tIso);
-      return '<tr><td><span class="swatch" style="background:' + color(p) + '"></span>' + esc(p.name) + '</td>' +
-        '<td class="num">' + s.count + '</td>' +
-        '<td class="num">' + (s.avg === null ? '—' : fmtNum(s.avg) + ' дн.') + '</td>' +
-        '<td class="num">раз на ' + p.interval + ' дн.</td></tr>';
+      return '<div class="stile" style="--sc:' + color(p) + ';--i:' + i + '"><span class="st-hex" aria-hidden="true"></span><strong>' + esc(p.name) + '</strong>' +
+        '<span class="st-n" title="Поливів">' + DROP + '<b>' + s.count + '</b></span>' +
+        '<span class="st-n" title="Середній інтервал">' + P_GAP + '<b>' + (s.avg === null ? '—' : fmtNum(s.avg)) + '</b></span>' +
+        '<span class="st-n soft" title="За планом">' + P_REPEAT + '<b>' + p.interval + '</b></span></div>';
     }).join('');
 
-    return '<div class="section-head"><h2>Статистика</h2></div>' +
-      '<div class="stack">' +
+    return '<div class="stack dstack">' +
         '<div class="filters"><div class="chips" role="group" aria-label="Рослини для порівняння">' + chips + '</div>' +
         '<div class="seg" role="group" aria-label="Період">' + seg + '</div></div>' +
-        '<section class="chart-card"><p class="chart-cap">Кожна крапка — один полив. Число між крапками — скільки днів минуло між поливами.</p>' +
-        '<div class="chart" id="chart"></div></section>' +
-        (ids.length ? '<div class="tbl-wrap"><table class="stats"><thead><tr><th>Рослина</th><th>Поливів</th><th>Сер. інтервал</th><th>За планом</th></tr></thead><tbody>' + rows + '</tbody></table></div>' : '') +
+        (ids.length ? '<div class="stiles">' + tiles + '</div>' : '') +
+        '<section class="chart-card"><div class="chart" id="chart"></div></section>' +
       '</div>';
   }
 
@@ -560,19 +587,22 @@
     });
     all.sort(function (a, b) { return a.l.date < b.l.date ? 1 : a.l.date > b.l.date ? -1 : b.l.ts - a.l.ts; });
     var html = statsHtml();
-    html += '<div style="height:22px"></div><div class="section-head"><h2>Записи</h2></div><div style="height:12px"></div>';
     if (!all.length) {
-      html += '<div class="empty">Записів поки немає. Натисніть «Полив» на картці рослини.</div>';
+      html += '<div class="tl-empty">' + hexBadge(DROP, 'te-hex') + '</div>';
     } else {
-      html += '<ul class="log-list">' + all.map(function (x) {
-        var key = x.p.id + ':' + x.l.id;
-        var asking = ui.confirm === key;
-        return '<li class="log"><div class="lthumb">' + (x.l.photo ? '<img loading="lazy" decoding="async" src="' + esc(x.l.photo) + '" alt="Фото поливу">' : DROP) + '</div>' +
-          '<div><div class="row"><h3>' + esc(x.p.name) + '</h3>' +
-          '<button type="button" class="ibtn del sm' + (asking ? ' sure' : '') + '" data-action="del-log" data-plant="' + x.p.id + '" data-log="' + x.l.id + '" aria-label="Видалити запис">' + I_TRASH + (asking ? '<span>Точно?</span>' : '') + '</button></div>' +
-          '<p class="when">' + esc(fmtDate(x.l.date)) + '</p>' +
-          '</div></li>';
-      }).join('') + '</ul>';
+      // a timeline: one node per watering, grouped by month
+      var month = '', mfmt = new Intl.DateTimeFormat('uk-UA', { month: 'long', year: 'numeric' });
+      html += '<ol class="tline">' + all.map(function (x, i) {
+        var key = x.p.id + ':' + x.l.id, asking = ui.confirm === key;
+        var m = x.l.date.slice(0, 7), head = '';
+        if (m !== month) { month = m; head = '<li class="tl-month"><span>' + esc(mfmt.format(parse(x.l.date))) + '</span></li>'; }
+        return head + '<li class="tl" style="--sc:' + color(x.p) + ';--i:' + Math.min(i, 12) + '">' +
+          '<span class="tl-node" aria-hidden="true"></span>' +
+          (x.l.photo ? '<button type="button" class="tl-pic" data-action="gallery" data-id="' + x.p.id + '" aria-label="Фото"><img loading="lazy" decoding="async" src="' + esc(x.l.photo) + '" alt=""></button>' : '<span class="tl-pic none">' + DROP + '</span>') +
+          '<div class="tl-text"><strong>' + esc(x.p.name) + '</strong><span>' + esc(fmtShort(x.l.date)) + '</span></div>' +
+          '<button type="button" class="ibtn del sm' + (asking ? ' sure' : '') + '" data-action="del-log" data-plant="' + x.p.id + '" data-log="' + x.l.id + '" aria-label="Видалити запис">' + I_TRASH + (asking ? '<span>Точно?</span>' : '') + '</button>' +
+          '</li>';
+      }).join('') + '</ol>';
     }
     view.innerHTML = html;
     drawChart();
@@ -2411,7 +2441,7 @@
   (function () {
     if (reduceMotion || !('IntersectionObserver' in window) || !window.matchMedia('(hover: none)').matches) return;
     var seen = new Set();
-    var SEL = '.section-screen .pcard, .section-screen .m-tile, .section-screen .tcard, .dream-steps, .dwhy, .dstats, .dmats, .ddone, .add-card';
+    var SEL = '.section-screen .pcard, .section-screen .pod, .section-screen .pod-add, .stile, .chart-card, .tl, .section-screen .m-tile, .section-screen .tcard, .dream-steps, .dwhy, .dstats, .dmats, .ddone, .add-card';
     function key(el) {
       var id = el.getAttribute('data-id') || (el.querySelector('[data-id]') || el).getAttribute('data-id') || '';
       return ui.screen + '|' + (ui.dreamId || '') + '|' + el.className.split(' ')[0] + '|' + (id || (el.textContent || '').trim().slice(0, 16));
