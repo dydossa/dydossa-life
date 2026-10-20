@@ -1833,11 +1833,11 @@
         '<button type="button" class="ibtn" data-action="dream-edit" data-id="' + d.id + '" aria-label="Змінити назву, фото" title="Змінити назву, фото">' + I_GEAR + '</button>' +
         '<button type="button" class="ibtn del' + (ui.confirm === 'dream' ? ' sure' : '') + '" data-action="dream-delete" aria-label="Видалити мрію" title="Видалити мрію">' + I_TRASH + (ui.confirm === 'dream' ? '<span>У корзину?</span>' : '') + '</button></div>' +
       '<div class="dlayout"><aside class="dside">' +
-      '<header class="dhero' + (d.photo ? ' has-photo' : '') + '"' + (vtPhotoId === d.id ? ' style="view-transition-name:dphoto" data-vt' : '') + '>' +
+      '<div class="dhero-wrap"><header class="dhero' + (d.photo ? ' has-photo' : '') + '"' + (vtPhotoId === d.id ? ' style="view-transition-name:dphoto" data-vt' : '') + '>' +
         (d.photo ? '<img loading="lazy" decoding="async" src="' + esc(d.photo) + '" alt="">' : '<span class="dhero-star">' + STAR + '</span>') +
         '<div class="dhero-text">' + (badge ? '<span class="dhero-badge done">' + badge + '</span>' : '') +
         '<h2>' + esc(d.title) + '</h2></div>' +
-      '</header>';
+      '</header></div>';
     html += '<section class="dprog"><div class="ring" style="--p:' + pct + '"><span>' + pct + '%</span></div><div class="dprog-text">' +
       (d.status === 'done' ? '<small>Здійснено</small><strong>Мрія здійснилась!</strong>'
         : nextStep ? '<small>Наступний крок</small><strong>' + esc(nextStep.t) + '</strong>'
