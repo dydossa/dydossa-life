@@ -1456,3 +1456,18 @@ html { touch-action: pan-x pan-y; scrollbar-width: none; background: #F4F1EA; }
 html::-webkit-scrollbar, body::-webkit-scrollbar { display: none; width: 0; height: 0; }
 @media (prefers-color-scheme: dark) { html:not([data-theme="light"]) { background: #070818; } }
 html[data-theme="dark"] { background: #070818; }
+
+/* phone home: the page itself never moves; in list view only the list scrolls under the pinned preview */
+@media (max-width: 760px) {
+  html:has(body.on-home), body.on-home { overflow: hidden; }
+  body.on-home { height: calc(100dvh - env(safe-area-inset-top, 0px)); box-sizing: border-box; padding-bottom: calc(10px + env(safe-area-inset-bottom, 0px)); display: flex; flex-direction: column; }
+  body.on-home #app { flex: 1; min-height: 0; width: 100%; }
+  body.on-home .home { flex: 1; min-height: 0; touch-action: none; }
+  body.on-home .home .hlist { touch-action: auto; }
+  body.on-home .wheel-wrap { width: min(100%, calc(100dvh - 190px)); }
+  body.on-home .hlist:not([hidden]) { display: flex; flex-direction: column; height: 100%; min-height: 0; gap: 6px; }
+  body.on-home .hl-preview { flex: none; }
+  body.on-home .hl-items { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; scrollbar-width: none; -webkit-overflow-scrolling: touch;
+    padding-bottom: 70px; -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 14px, #000 calc(100% - 40px), transparent 100%); mask-image: linear-gradient(to bottom, transparent 0, #000 14px, #000 calc(100% - 40px), transparent 100%); }
+  body.on-home .hl-items::-webkit-scrollbar { display: none; }
+}
