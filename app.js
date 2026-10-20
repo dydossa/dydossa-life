@@ -315,7 +315,9 @@
   var P_GAP = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12h18"/><path d="M6 9l-3 3 3 3"/><path d="M18 9l3 3-3 3"/></svg>';
 
   // a pointy-top hexagon in a 86.6 x 100 box, drawn from the top corner clockwise
-  var HEX_D = 'M43.3 1 L85.6 25.5 L85.6 74.5 L43.3 99 L1 74.5 L1 25.5 Z';
+  // a tall hexagon in an 80 x 100 box, drawn from the top corner clockwise (photos get more room)
+  var HEX_D = 'M40 1 L79 22.5 L79 77.5 L40 99 L1 77.5 L1 22.5 Z';
+  var HEX_VB = '-6 -6 92 112';
 
   function renderSummary() {
     var due = state.plants.filter(function (p) { return status(p).due; }).length;
@@ -347,7 +349,7 @@
     var hex = '<div class="pod-hex">' +
       '<button type="button" class="pod-pic" data-action="gallery" data-id="' + p.id + '" aria-label="Фото: ' + esc(p.name) + '">' +
         (cover ? '<img loading="lazy" decoding="async" src="' + esc(cover) + '" alt="">' : '<span class="pod-ico">' + ICON_PLANT + '</span>') + '</button>' +
-      '<svg class="pod-ring" viewBox="-6 -6 98.6 112" aria-hidden="true"><path class="pr-track" d="' + HEX_D + '"/>' +
+      '<svg class="pod-ring" viewBox="' + HEX_VB + '" aria-hidden="true"><path class="pr-track" d="' + HEX_D + '"/>' +
         '<path class="pr-fill" pathLength="100" d="' + HEX_D + '" style="stroke-dasharray:' + Math.round(water * 100) + ' 100"/></svg>' +
       (photos.length ? '<span class="pod-n" aria-hidden="true">' + I_IMAGE + photos.length + '</span>' : '') +
       '<button type="button" class="pod-water" data-action="water" data-id="' + p.id + '" aria-label="Полити: ' + esc(p.name) + '">' + DROP + '</button>' +
@@ -376,7 +378,7 @@
     var html = '<div class="pgrid' + (list.length ? '' : ' empty-g') + '">';
     list.forEach(function (p, i) { html += plantPod(p, i, i === 0 && list.length > 1); });
     html += '<button type="button" class="pod-add pstag" data-action="add" aria-label="Додати рослину" style="--i:' + list.length + '">' +
-      '<svg class="pa-hex" viewBox="-6 -6 98.6 112" aria-hidden="true"><path d="' + HEX_D + '"/></svg><span class="pa-plus">' + I_PLUS + '</span></button>';
+      '<svg class="pa-hex" viewBox="' + HEX_VB + '" aria-hidden="true"><path d="' + HEX_D + '"/></svg><span class="pa-plus">' + I_PLUS + '</span></button>';
     view.innerHTML = html + '</div>';
   }
 
@@ -1048,29 +1050,36 @@
       return;
     }
     if (ui.galIdx !== null && photos[ui.galIdx]) {
-      var l = photos[ui.galIdx], i0 = ui.galIdx, dir = ui.galDir || 0;
+      var l = photos[ui.galIdx], i0 = ui.galIdx, dir = ui.galDir || 0, g = gapDays(p, l);
       galleryEl.innerHTML = '<div class="gv">' +
         '<div class="gv-stage" id="gv-stage">' +
           '<img class="gv-bg" src="' + esc(l.photo) + '" alt="" aria-hidden="true">' +
           '<img class="gv-img' + (dir > 0 ? ' from-r' : dir < 0 ? ' from-l' : '') + '" src="' + esc(l.photo) + '" alt="Фото від ' + esc(fmtDate(l.date)) + '">' +
           '<button type="button" class="gv-nav prev" data-action="gal-step" data-d="-1"' + (i0 === 0 ? ' disabled' : '') + ' aria-label="Попереднє фото">' + I_BACK + '</button>' +
           '<button type="button" class="gv-nav next" data-action="gal-step" data-d="1"' + (i0 === photos.length - 1 ? ' disabled' : '') + ' aria-label="Наступне фото">' + I_NEXT + '</button>' +
-          '<span class="gv-chip gv-date">' + esc(fmtDate(l.date)) + '</span>' +
-          (photos.length > 1 ? '<span class="gv-chip gv-count">' + (i0 + 1) + ' / ' + photos.length + '</span>' : '') +
+          '<div class="gv-tags"><span class="gv-tag">' + DROP + esc(fmtShort(l.date)) + '</span>' +
+            '<span class="gv-tag soft" title="' + esc(gapText(p, l)) + '">' + (g === null ? STAR : P_GAP + g + ' д') + '</span></div>' +
+          (photos.length > 1 ? '<span class="gv-count">' + (i0 + 1) + '<i>/</i>' + photos.length + '</span>' : '') +
         '</div>' +
-        '<div class="gv-info"><strong>' + esc(fmtDate(l.date)) + '</strong><span>' + esc(gapText(p, l)) + '</span></div>' +
-        (photos.length < 2 ? '' : '<div class="gv-bar"><button type="button" class="gv-all" data-action="gal-back">' + I_GRID + '<span>Усі</span></button>') +
+        (photos.length < 2 ? '' : '<div class="gv-bar"><button type="button" class="gv-all" data-action="gal-back" aria-label="Усі фото">' + I_GRID + '</button>' +
         '<div class="gv-strip" id="gv-strip">' + photos.map(function (x, i) {
-          return '<button type="button" class="gv-th"' + (i === i0 ? ' aria-current="true"' : '') + ' data-action="gal-open" data-i="' + i + '" aria-label="Фото від ' + esc(fmtDate(x.date)) + '"><img loading="lazy" decoding="async" src="' + esc(x.photo) + '" alt=""><small>' + esc(fmtDate(x.date)) + '</small></button>';
-        }).join('') + (photos.length < 2 ? '' : '</div></div>') + '</div>';
+          return '<button type="button" class="gv-th"' + (i === i0 ? ' aria-current="true"' : '') + ' data-action="gal-open" data-i="' + i + '" aria-label="Фото від ' + esc(fmtDate(x.date)) + '">' +
+            '<span class="gv-hx"><img loading="lazy" decoding="async" src="' + esc(x.photo) + '" alt=""></span><small>' + esc(fmtShort(x.date)) + '</small></button>';
+        }).join('') + '</div></div>') + '</div>';
       ui.galDir = 0;
       var cur = galleryEl.querySelector('.gv-th[aria-current]');
       if (cur && cur.scrollIntoView) cur.scrollIntoView({ block: 'nearest', inline: 'center' });
       return;
     }
-    galleryEl.innerHTML = '<div class="gal-grid">' + photos.map(function (x, i) {
-      return '<button type="button" class="gal-item" style="--i:' + i + '" data-action="gal-open" data-i="' + i + '" aria-label="Фото від ' + esc(fmtDate(x.date)) + '"><img loading="lazy" decoding="async" src="' + esc(x.photo) + '" alt=""><span class="gal-date">' + esc(fmtDate(x.date)) + '</span></button>';
+    // all photos: a tight honeycomb of tall hexagons, newest first
+    galleryEl.innerHTML = '<div class="hgrid">' + photos.map(function (x, i) {
+      return '<button type="button" class="hg-item" style="--i:' + i + '" data-action="gal-open" data-i="' + i + '" aria-label="Фото від ' + esc(fmtDate(x.date)) + '">' +
+        '<span class="gv-hx"><img loading="lazy" decoding="async" src="' + esc(x.photo) + '" alt=""></span><small>' + esc(fmtShort(x.date)) + '</small></button>';
     }).join('') + '</div>';
+  }
+  function gapDays(p, l) {
+    var logs = ascLogs(p), i = logs.indexOf(l);
+    return i <= 0 ? null : diffDays(parse(l.date), parse(logs[i - 1].date));
   }
   // the viewer also listens to arrow keys and to swipes
   function gapText(p, l) {
