@@ -1512,3 +1512,15 @@ html[data-theme="dark"] { background: #070818; }
   html.sheet-open .bg *, html.sheet-open .bg::before, html.sheet-open .w-glow, html.sheet-open .emb-sprout svg { animation-play-state: paused !important; }
   .tc-ring.soon { animation: none; }
 }
+
+/* computer home: locked in place too; the flower fits the window, the list scrolls inside itself if it must */
+@media (min-width: 761px) {
+  html:has(body.on-home), body.on-home { overflow: hidden; }
+  body.on-home { height: 100dvh; box-sizing: border-box; display: flex; flex-direction: column; }
+  body.on-home #app { flex: 1; min-height: 0; width: 100%; }
+  body.on-home .home { flex: 1; min-height: 0; }
+  body.on-home .wheel-wrap { width: min(100%, calc(100dvh - 190px), 880px); }
+  body.on-home .hlist:not([hidden]) { height: 100%; min-height: 0; }
+  body.on-home .hl-items { max-height: 100%; overflow-y: auto; overflow-x: hidden; scrollbar-width: none; overscroll-behavior: contain; padding-block: 8px; }
+  body.on-home .hl-items::-webkit-scrollbar { display: none; }
+}
