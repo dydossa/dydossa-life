@@ -1163,7 +1163,8 @@
       pName.value = q.name;
       pInterval.value = q.interval;
       pDelete.hidden = false;
-      pDelete.textContent = 'Видалити рослину';
+      pDelete.innerHTML = I_TRASH;
+      paintPForm(q);
       pSubmit.disabled = false;
       first = pName;
     } else if (type === 'add') {
@@ -1171,6 +1172,7 @@
       pName.value = '';
       pInterval.value = 14;
       pDelete.hidden = true;
+      paintPForm(null);
       pSubmit.disabled = false;
       first = pName;
     } else if (type === 'step') {
@@ -1643,6 +1645,20 @@
     toast(files.length > 1 ? 'Завантажую ' + files.length + ' файли…' : 'Завантажую файл…');
     run(function () { return addFiles(d, parent, files); }, files.length > 1 ? 'Файли додано' : 'Файл додано');
   }
+
+  // plant form: the plant's hexagon on top, presets light up when they match
+  function paintPForm(p) {
+    var box = document.getElementById('pf-hex');
+    var ph = p ? photosOf(p) : [];
+    box.innerHTML = '<span class="pf-pic">' + (ph.length ? '<img src="' + esc(ph[0].photo) + '" alt="">' : ICON_PLANT) + '</span>' +
+      '<svg class="pf-ring" viewBox="' + HEX_VB + '" aria-hidden="true"><path d="' + HEX_D + '"/></svg>';
+    paintPresets();
+  }
+  function paintPresets() {
+    var v = String(parseInt(pInterval.value, 10) || '');
+    document.querySelectorAll('#pf-presets .pf-pre').forEach(function (b) { b.setAttribute('aria-pressed', b.getAttribute('data-v') === v ? 'true' : 'false'); });
+  }
+  pInterval.addEventListener('input', paintPresets);
 
   function fillDreamForm(d) {
     dResetPhoto();
@@ -2178,7 +2194,8 @@
     else if (act === 'gal-back') { ui.galIdx = null; renderGallery(); }
     else if (act === 'gal-step') galStep(Number(el.getAttribute('data-d')));
     else if (act === 'home-edit') setEditing(!homeEditing);
-    else if (act === 'int-step') { var iv = Math.max(1, Math.min(365, (parseInt(pInterval.value, 10) || 1) + Number(el.getAttribute('data-d')))); pInterval.value = iv; }
+    else if (act === 'int-step') { var iv = Math.max(1, Math.min(365, (parseInt(pInterval.value, 10) || 1) + Number(el.getAttribute('data-d')))); pInterval.value = iv; paintPresets(); }
+    else if (act === 'int-set') { pInterval.value = el.getAttribute('data-v'); paintPresets(); }
     else if (act === 'w-day') { var wd = new Date(today()); wd.setDate(wd.getDate() - Number(el.getAttribute('data-d'))); wDate.value = iso(wd); paintDayChips(); }
     else if (act === 'stat-toggle') {
       var cur = selectedIds();
@@ -2199,7 +2216,7 @@
     else if (act === 'delete-plant') {
       if (ui.confirm !== 'plant') {
         ui.confirm = 'plant';
-        pDelete.textContent = 'Так, перемістити в корзину на 2 дні';
+        pDelete.innerHTML = I_TRASH + '<span>Точно?</span>';
       } else {
         var pid = ui.sheet && ui.sheet.id;
         ui.confirm = null;
@@ -2358,6 +2375,15 @@
     var html = layers.map(function (l, n) { return '<i class="sl sl' + n + '" style="box-shadow:' + l.join(',') + '"></i>'; }).join('');
     box.innerHTML = html;
     var bg = document.getElementById('bg');
+    // daylight: soft coloured motes drifting instead of stars
+    var dust = document.createElement('div'); dust.className = 'bg-dust'; dust.setAttribute('aria-hidden', 'true');
+    var tints = ['126, 208, 160', '255, 178, 128', '176, 156, 255', '120, 186, 255'], dl = [[], [], []];
+    for (var j = 0; j < 46; j++) {
+      var sz = (1.5 + rnd() * 3.5).toFixed(1), tc = tints[j % 4], op = (0.35 + rnd() * 0.4).toFixed(2);
+      dl[j % 3].push((rnd() * 100).toFixed(2) + 'vw ' + (rnd() * 100).toFixed(2) + 'vh ' + (sz * 1.6).toFixed(1) + 'px ' + (sz * 0.6).toFixed(1) + 'px rgba(' + tc + ',' + op + ')');
+    }
+    dust.innerHTML = dl.map(function (l, n) { return '<i class="dl dl' + n + '" style="box-shadow:' + l.join(',') + '"></i>'; }).join('');
+    bg.appendChild(dust);
     if (reduceMotion) return;
     if (!window.matchMedia('(hover: hover) and (pointer: fine)').matches) {
       // phone: the stars drift a little as you scroll, so the page has depth like on a computer
@@ -2441,6 +2467,7 @@
     cs.content = isDark() ? 'dark' : 'light';
     document.documentElement.style.colorScheme = isDark() ? 'dark' : 'light';
     document.documentElement.style.backgroundColor = c;
+    document.documentElement.classList.toggle('is-light', !isDark());
   }
 
   // no pinch or double-tap zoom (iOS ignores the viewport setting in the browser)
