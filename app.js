@@ -690,9 +690,9 @@
         ? ' data-action="petal" data-section="' + sec.id + '" data-title="' + esc(sec.title) + '" role="button" tabindex="0" aria-label="' + esc(sec.title) + (ready ? '' : ', скоро') + '"'
         : ' aria-hidden="true"';
       out += '<g class="' + cls + '" data-slot="' + slot + '"' + attrs + '>' +
+        '<polygon class="hx-hit" points="' + hexPoints(100) + '"/>' +
         '<g class="hx-float"><g class="hx-move"><g class="hx-in">' +
         '<circle class="hx-ripple" r="106"/>' +
-        '<polygon class="hx-hit" points="' + hexPoints(110) + '"/>' +
         '<polygon class="hx-frame" points="' + hexPoints(104) + '"/>';
       if (sec) {
         out += '<polygon class="hx-fill" points="' + hexPoints(86) + '"/>' +
